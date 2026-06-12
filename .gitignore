@@ -17,6 +17,6 @@ build/
 !.env.example
 logs/
 tmp/
-.DS_Store
-Thumbs.db
+backend/static/alerts/*.mp3
+**/__pycache__/
 

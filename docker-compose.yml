@@ -1,35 +1,62 @@
 services:
+  db:
+
+    image: postgis/postgis:15-3.4
+    environment:
+      POSTGRES_DB: vajrawatch
+      POSTGRES_USER: vajra
+      POSTGRES_PASSWORD: watch2026
+    ports: 
+      - "5432:5432"
+    volumes: 
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vajra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
-    ports:
+    ports: 
       - "6379:6379"
-    volumes:
-      - redisdata:/data
-    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: 
+      - "11435:11434"
+
+    volumes: 
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    ports:
+    ports: 
+
       - "8000:8000"
-    environment:
-      APP_ENV: ${APP_ENV:-development}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-with-a-strong-local-secret}
-      NEO4J_URI: ${NEO4J_URI:-}
-      NEO4J_USERNAME: ${NEO4J_USERNAME:-}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
-      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
-      REDIS_URL: redis://redis:6379/0
-      ANTIGRAVITY_ENABLED: ${ANTIGRAVITY_ENABLED:-false}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
-      - redis
-    volumes:
-      - .:/app
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://vajra:watch2026@db:5432/vajrawatch
+      REDIS_URL: redis://redis:6379
+      OLLAMA_BASE_URL: http://ollama:11434
+      NEO4J_URI: ${NEO4J_URI}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+    volumes: 
+      - ./backend:/app/backend
+      - ./data:/app/data
 
 volumes:
-  redisdata:
-
+  pgdata:
+  ollama_data:

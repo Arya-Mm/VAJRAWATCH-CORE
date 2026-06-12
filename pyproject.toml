@@ -33,7 +33,9 @@ dev = [
     "pytest-cov",
     "ruff",
     "types-PyJWT",
+    "types-requests",
 ]
+
 
 [tool.black]
 line-length = 100

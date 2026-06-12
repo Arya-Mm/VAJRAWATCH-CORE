@@ -1,17 +1,29 @@
-FROM python:3.13-slim
+# Use a slim, production-ready Python image
+FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+# Prevent Python from writing pyc files and enforce unbuffered stdout
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN python -m pip install --upgrade pip && \
-    python -m pip install -r requirements.txt
+# Install system dependencies required for spatial libraries and audio
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy requirements and install
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the actual backend application code
 COPY . .
 
+# Expose the FastAPI port
 EXPOSE 8000
 
+# Launch Uvicorn
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
