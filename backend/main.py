@@ -296,38 +296,110 @@ def get_lakes() -> dict[str, Any]:
 
 @app.get("/explain/{lake_id}")
 def explain(lake_id: str) -> dict[str, Any]:
-    assessment = get_risk(lake_id)
+    mock_data_path = ROOT_DIR / "data" / "thulagi_mock_data.json"
+    with open(mock_data_path) as f:
+        data = json.load(f)
+
+    if _simulate_mode.get(lake_id):
+        data["ndwi_delta"] = 0.45
+        data["precip_7d_mm"] = 350.0
+        data["seismic_count_14d"] = 8
+
+    # Get NVIDIA weather forecast
+    weather = generate_nvidia_weather_forecast()
+    data["nvidia_precip_5day_mm"] = weather["precip_5day_mm"]
+
+    # Calculate deterministic risk directly to keep it fast
+    from backend.ml.features import calculate_risk
+    risk = calculate_risk(data)
+
     top_driver_1 = (
-        assessment["top_drivers"][0]["feature"] if len(assessment["top_drivers"]) > 0 else "unknown"
+        risk["top_drivers"][0]["feature"] if len(risk["top_drivers"]) > 0 else "unknown"
     )
     top_driver_2 = (
-        assessment["top_drivers"][1]["feature"] if len(assessment["top_drivers"]) > 1 else "unknown"
+        risk["top_drivers"][1]["feature"] if len(risk["top_drivers"]) > 1 else "unknown"
     )
 
+    # Base impact values
+    impact = {
+        "population": 12480,
+        "hydropower_mw": 186,
+        "historical_analog": "South Lonak 2023",
+        "evacuation_route": "Besisahar → Khudi → Bhulebhule → Bharatpur (4.5h)",
+    }
+    graph_paths = [
+        {
+            "from": "Thulagi Lake",
+            "relationship": "THREATENS",
+            "to": "Besisahar Hydro",
+        }
+    ]
+
+    neo4j_uri = os.getenv("NEO4J_URI")
+    neo4j_user = os.getenv("NEO4J_USERNAME", "neo4j")
+    neo4j_password = os.getenv("NEO4J_PASSWORD")
+
+    if neo4j_uri and neo4j_password:
+        try:
+            from langchain_neo4j import Neo4jGraph
+
+            # Setup the Graph connection via LangChain
+            graph = Neo4jGraph(
+                url=neo4j_uri,
+                username=neo4j_user,
+                password=neo4j_password
+            )
+            # Seed / merge the test relationship so it is available
+            graph.query(
+                "MERGE (l:GlacialLake {name: 'Thulagi Lake', id: 'PDGL_THULAGI_01'}) "
+                "MERGE (i:Infrastructure {name: 'Besisahar Hydro', value_usd: 45000000, mw: 186}) "
+                "MERGE (l)-[:THREATENS]->(i)"
+            )
+            # Query the database
+            results = graph.query(
+                "MATCH (l:GlacialLake {id: $lake_id})-[r:THREATENS]->(i:Infrastructure) "
+                "RETURN l.name AS lake_name, i.name AS infra_name, i.value_usd AS value_usd, i.mw AS mw",
+                params={"lake_id": lake_id}
+            )
+            if results:
+                infra_name = results[0].get("infra_name", "Besisahar Hydro")
+                val_usd = results[0].get("value_usd", 45000000)
+                mw = results[0].get("mw", 186)
+
+                impact["hydropower_mw"] = mw
+                impact["threatened_infrastructure_val"] = f"${val_usd:,}"
+                graph_paths = [
+                    {
+                        "from": results[0].get("lake_name", "Thulagi Lake"),
+                        "relationship": "THREATENS",
+                        "to": infra_name,
+                    }
+                ]
+        except Exception as e:
+            print(f"LangChain Neo4j Graph Query failed: {e}")
+
     explanation = (
-        f"Thulagi Lake is currently {assessment['risk_tier']} at "
-        f"{assessment['risk_score']}/100. The primary drivers are "
+        f"Thulagi Lake is currently {risk['risk_tier']} at "
+        f"{risk['risk_score']}/100. The primary drivers are "
         f"{top_driver_1} and {top_driver_2}. "
-        f"The graph impact layer identifies {assessment['impact']['population']} "
-        f"people, {assessment['impact']['hydropower_mw']} MW of hydropower exposure, "
-        f"and the closest historical analog is {assessment['impact']['historical_analog']}."
+        f"The graph impact layer identifies {impact['population']} "
+        f"people, {impact['hydropower_mw']} MW of hydropower exposure, "
+        f"and the closest historical analog is {impact['historical_analog']}."
     )
+    if "threatened_infrastructure_val" in impact:
+        explanation += f" The threatened infrastructure is valued at {impact['threatened_infrastructure_val']}."
 
     return {
         "lake_id": lake_id,
-        "name": assessment["name"],
-        "risk_tier": assessment["risk_tier"],
-        "risk_score": assessment["risk_score"],
+        "name": "Thulagi Lake",
+        "risk_tier": risk["risk_tier"],
+        "risk_score": risk["risk_score"],
         "explanation": explanation,
-        "impact": assessment["impact"],
-        "graph_paths": [
-            {
-                "from": lake_id,
-                "relationship": "THREATENS",
-                "to": "Besisahar Hydro",
-            }
-        ],
+        "impact": impact,
+        "graph_paths": graph_paths,
     }
+
+
 
 
 if __name__ == "__main__":
