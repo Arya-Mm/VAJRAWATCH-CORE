@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import useLakeStore from '../../store/useLakeStore';
 import { MapContext } from './mapUtils';
 
@@ -9,6 +9,8 @@ export default function MapControls() {
   const { map } = useContext(MapContext);
   const viewMode = useLakeStore((s) => s.viewMode);
   const setViewMode = useLakeStore((s) => s.setViewMode);
+
+  const [activeLayer, setActiveLayer] = useState('terrain'); // 'street' | 'terrain' | 'satellite'
 
   const zoomIn = () => {
     if (!map) return;
@@ -25,9 +27,20 @@ export default function MapControls() {
     map.flyTo({
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
-      pitch: 0,
+      pitch: 35, // Reset to tilted perspective
       bearing: 0,
       essential: true
+    });
+  };
+
+  const switchLayer = (layerId) => {
+    if (!map) return;
+    setActiveLayer(layerId);
+    const layers = ['street-layer', 'terrain-layer', 'satellite-layer'];
+    layers.forEach((id) => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, 'visibility', id === `${layerId}-layer` ? 'visible' : 'none');
+      }
     });
   };
 
@@ -87,6 +100,31 @@ export default function MapControls() {
           aria-label="Reset View"
         >
           ⟲ <span className="control-btn-label">RESET</span>
+        </button>
+      </div>
+
+      {/* 3. Layer Switcher (Bottom-Right) */}
+      <div className="map-layers-panel" role="group" aria-label="Map Layer Switching">
+        <button
+          type="button"
+          className={`layer-btn ${activeLayer === 'street' ? 'active' : ''}`}
+          onClick={() => switchLayer('street')}
+        >
+          Street
+        </button>
+        <button
+          type="button"
+          className={`layer-btn ${activeLayer === 'terrain' ? 'active' : ''}`}
+          onClick={() => switchLayer('terrain')}
+        >
+          Terrain
+        </button>
+        <button
+          type="button"
+          className={`layer-btn ${activeLayer === 'satellite' ? 'active' : ''}`}
+          onClick={() => switchLayer('satellite')}
+        >
+          Satellite
         </button>
       </div>
     </>

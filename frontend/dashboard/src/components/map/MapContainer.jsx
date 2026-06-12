@@ -5,21 +5,56 @@ import boundaryData from '../../data/geojson/thulagiBoundary.json';
 import { MapContext } from './mapUtils';
 import useLakeStore from '../../store/useLakeStore';
 
+const MAP_SOURCES = {
+  'street': {
+    type: 'raster',
+    tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'],
+    tileSize: 256,
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+  },
+  'terrain': {
+    type: 'raster',
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'],
+    tileSize: 256,
+    attribution: 'Tiles &copy; Esri &mdash; National Geographic, Esri, USGS, NOAA'
+  },
+  'satellite': {
+    type: 'raster',
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    tileSize: 256,
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP'
+  }
+};
+
 const MAP_STYLE = {
   version: 8,
   sources: {
-    'osm-raster': {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors'
-    }
+    'street-source': MAP_SOURCES['street'],
+    'terrain-source': MAP_SOURCES['terrain'],
+    'satellite-source': MAP_SOURCES['satellite']
   },
   layers: [
     {
-      id: 'osm-layer',
+      id: 'street-layer',
       type: 'raster',
-      source: 'osm-raster',
+      source: 'street-source',
+      layout: { visibility: 'none' },
+      minzoom: 0,
+      maxzoom: 19
+    },
+    {
+      id: 'terrain-layer',
+      type: 'raster',
+      source: 'terrain-source',
+      layout: { visibility: 'visible' }, // Default
+      minzoom: 0,
+      maxzoom: 19
+    },
+    {
+      id: 'satellite-layer',
+      type: 'raster',
+      source: 'satellite-source',
+      layout: { visibility: 'none' },
       minzoom: 0,
       maxzoom: 19
     }
@@ -92,7 +127,7 @@ export default function MapContainer({ children }) {
       style: MAP_STYLE,
       center: THULAGI_COORDS,
       zoom: 12.2,
-      pitch: 0,
+      pitch: 35, // Tilt slightly on load to showcase 3D topography depth
       bearing: 0,
       attributionControl: false,
       maxZoom: 18,
@@ -157,6 +192,20 @@ export default function MapContainer({ children }) {
           }
         });
       }
+
+      // Add raster-dem source for Mapzen Terrarium elevation tiles
+      mapInstance.addSource('terrain-dem', {
+        type: 'raster-dem',
+        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        encoding: 'terrarium',
+        tileSize: 256
+      });
+
+      // Enable terrain 3D exaggeration
+      mapInstance.setTerrain({
+        source: 'terrain-dem',
+        exaggeration: 1.5
+      });
 
       setMap(mapInstance);
     });

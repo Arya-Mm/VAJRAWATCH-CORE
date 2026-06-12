@@ -2108,4 +2108,44 @@ button { font-family: var(--font); cursor: pointer; border: none; }
   animation-duration: 1.5s;
 }
 
+/* Map basemap layer switcher panel */
+.map-layers-panel {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  background: rgba(10, 15, 30, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px;
+  z-index: 5;
+  gap: 2px;
+  backdrop-filter: blur(8px);
+}
+
+.layer-btn {
+  background: transparent;
+  color: var(--text-3);
+  border: none;
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.layer-btn:hover {
+  color: var(--text-2);
+}
+
+.layer-btn.active {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: var(--green);
+}
+
 
