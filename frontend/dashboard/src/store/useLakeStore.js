@@ -9,7 +9,7 @@
  */
 
 import { create } from 'zustand';
-import { thulagiData } from '../data/thulagiMock';
+import { thulagiData, lakesData } from '../data/thulagiMock';
 import { fetchRisk } from '../services/riskApi';
 import { fetchImpact } from '../services/impactApi';
 import { fetchAgents, fetchTimeline } from '../services/traceApi';
@@ -34,11 +34,13 @@ export function formatRelativeTime(date) {
 
 const useLakeStore = create((set, get) => ({
   /* ── Lake data (seeded from mock) ──────────────── */
-  selectedLake: thulagiData,
-  riskScore:    thulagiData.riskScore,
-  riskTier:     thulagiData.riskTier,
-  topDrivers:   thulagiData.topDrivers,
-  impactData:   thulagiData.impact,
+  selectedLake:   thulagiData,
+  selectedLakeId: 'PDGL_THULAGI_01',
+  lakesList:      Object.values(lakesData),
+  riskScore:      thulagiData.riskScore,
+  riskTier:       thulagiData.riskTier,
+  topDrivers:     thulagiData.topDrivers,
+  impactData:     thulagiData.impact,
 
   /* ── Agent Activity & Alert Evidence ───────────── */
   agentData:    thulagiData.agents,
@@ -55,12 +57,42 @@ const useLakeStore = create((set, get) => ({
   reset3DTrigger: 0,
   zoom3DClick:    null,     // { action: 'in' | 'out', id: number }
 
+  /* ── View Controls (Single Lake vs Portfolio) ──── */
+  intelViewMode:  'single', // 'single' | 'regional'
+
   /* ── Actions ───────────────────────────────────── */
   setViewMode: (mode) => set({ viewMode: mode }),
   
   trigger3DReset: () => set((state) => ({ reset3DTrigger: state.reset3DTrigger + 1 })),
 
   zoom3D: (action) => set({ zoom3DClick: { action, id: Date.now() } }),
+
+  setIntelViewMode: (mode) => set({ intelViewMode: mode }),
+
+  selectLake: (lakeId) => {
+    const data = lakesData[lakeId];
+    if (!data) return;
+
+    // Reset timers on lake switch
+    if (analysisTimer !== null) {
+      clearTimeout(analysisTimer);
+      analysisTimer = null;
+    }
+
+    set({
+      selectedLakeId: lakeId,
+      selectedLake:   data,
+      riskScore:      data.riskScore,
+      riskTier:       data.riskTier,
+      topDrivers:     data.topDrivers,
+      impactData:     data.impact,
+      agentData:      data.agents,
+      evidence:       data.evidence,
+      reasoning:      data.reasoning,
+      decisionLogs:   data.decisionLogs,
+      analysisState:  'idle'
+    });
+  },
 
   runAnalysis: async () => {
     if (get().analysisState === 'loading') return; // guard: no double-fire
@@ -74,7 +106,7 @@ const useLakeStore = create((set, get) => ({
     set({ analysisState: 'loading' });
 
     try {
-      const lakeId = get().selectedLake.lakeId;
+      const lakeId = get().selectedLakeId;
       // Parallel fetches to FastAPI backend
       const [riskRes, impactRes, agentsRes, timelineRes] = await Promise.all([
         fetchRisk(lakeId),
@@ -105,14 +137,16 @@ const useLakeStore = create((set, get) => ({
       // Keep mock computational delay for realistic feel
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
+      const fallback = lakesData[get().selectedLakeId] || thulagiData;
+
       set({
-        riskScore: thulagiData.riskScore,
-        riskTier: thulagiData.riskTier,
-        impactData: thulagiData.impact,
-        agentData: thulagiData.agents,
-        evidence: thulagiData.evidence,
-        reasoning: thulagiData.reasoning,
-        decisionLogs: thulagiData.decisionLogs,
+        riskScore: fallback.riskScore,
+        riskTier: fallback.riskTier,
+        impactData: fallback.impact,
+        agentData: fallback.agents,
+        evidence: fallback.evidence,
+        reasoning: fallback.reasoning,
+        decisionLogs: fallback.decisionLogs,
         analysisState: 'critical',
         lastAnalysisAt: new Date()
       });

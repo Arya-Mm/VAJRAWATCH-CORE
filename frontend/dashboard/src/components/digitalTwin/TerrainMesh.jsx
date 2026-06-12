@@ -1,9 +1,23 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
+import useLakeStore from '../../store/useLakeStore';
+
+// Simple hashing function to generate coordinates offset seed from lakeId
+function getLakeSeedOffsets(lakeId) {
+  let hash = 0;
+  for (let i = 0; i < lakeId.length; i++) {
+    hash = lakeId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const xOffset = ((hash & 0xFF) / 255.0) * 1.5;
+  const yOffset = (((hash >> 8) & 0xFF) / 255.0) * 1.5;
+  const scale = 1.0 + (((hash >> 16) & 0xFF) / 255.0) * 0.4;
+  return { xOffset, yOffset, scale };
+}
 
 // Procedural generator to create grayscale heightmap and colored diffuse map
-function generateTerrainTextures() {
+function generateTerrainTextures(lakeId) {
   const size = 256;
+  const { xOffset, yOffset, scale } = getLakeSeedOffsets(lakeId);
 
   // 1. Grayscale Displacement Heightmap Canvas
   const dispCanvas = document.createElement('canvas');
@@ -27,12 +41,12 @@ function generateTerrainTextures() {
       const ny = (y / size) * 2 - 1;
       const dist = Math.sqrt(nx * nx + ny * ny);
 
-      // Base Himalayan topography profile
-      let height = 0.4 + 0.22 * Math.sin(nx * Math.PI) * Math.cos(ny * Math.PI);
-      height += 0.08 * Math.sin(nx * 8) * Math.cos(ny * 8);
-      height += 0.03 * Math.sin(nx * 20) * Math.cos(ny * 20);
+      // Base Himalayan topography profile with lake-specific offsets
+      let height = 0.4 + 0.22 * Math.sin((nx + xOffset) * Math.PI) * Math.cos((ny + yOffset) * Math.PI);
+      height += 0.08 * Math.sin((nx + xOffset * 2) * 8 * scale) * Math.cos((ny + yOffset * 2) * 8 * scale);
+      height += 0.03 * Math.sin((nx + xOffset * 3) * 20 * scale) * Math.cos((ny + yOffset * 3) * 20 * scale);
 
-      // Central depression for Thulagi Lake basin (dist < 0.22)
+      // Central depression for lake basin (dist < 0.22)
       if (dist < 0.22) {
         const factor = dist / 0.22;
         // Dips down to 0.12 at the center
@@ -115,7 +129,8 @@ function generateTerrainTextures() {
 }
 
 export default function TerrainMesh() {
-  const { dispCanvas, colorCanvas } = useMemo(() => generateTerrainTextures(), []);
+  const selectedLakeId = useLakeStore((s) => s.selectedLakeId);
+  const { dispCanvas, colorCanvas } = useMemo(() => generateTerrainTextures(selectedLakeId), [selectedLakeId]);
 
   const dispTexture = useMemo(() => {
     const tex = new THREE.CanvasTexture(dispCanvas);
@@ -130,6 +145,14 @@ export default function TerrainMesh() {
     tex.wrapT = THREE.ClampToEdgeWrapping;
     return tex;
   }, [colorCanvas]);
+
+  // Texture memory management to prevent memory leaks on GPU when swapping lakes
+  useEffect(() => {
+    return () => {
+      dispTexture.dispose();
+      colorTexture.dispose();
+    };
+  }, [dispTexture, colorTexture]);
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.5, 0]}>

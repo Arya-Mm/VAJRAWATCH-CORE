@@ -1749,3 +1749,363 @@ button { font-family: var(--font); cursor: pointer; border: none; }
   }
 }
 
+/* ── Regional Operations Center Styles ── */
+
+/* Lake Selector */
+.lake-selector-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lake-selector-dropdown {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  padding: 4px 24px 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.lake-selector-dropdown:hover,
+.lake-selector-dropdown:focus {
+  border-color: var(--green);
+  color: var(--text);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.15);
+}
+
+.lake-selector-arrow {
+  position: absolute;
+  right: 8px;
+  font-size: 7px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+/* Intel Toggle Bar */
+.intel-toggle-bar {
+  display: flex;
+  background: rgba(10, 15, 30, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px;
+  margin-bottom: 16px;
+  gap: 2px;
+}
+
+.intel-toggle-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.intel-toggle-btn:hover {
+  color: var(--text-2);
+}
+
+.intel-toggle-btn.is-active {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: var(--green);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.05);
+}
+
+/* Portfolio View */
+.portfolio-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.portfolio-title {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.portfolio-card {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.portfolio-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(17, 24, 39, 0.85);
+  transform: translateY(-1px);
+}
+
+.portfolio-card__label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+}
+
+.portfolio-card__value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.portfolio-card__sub {
+  font-size: 10px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* Risk Leaderboard */
+.risk-leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leaderboard-title {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-item {
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.leaderboard-item:hover {
+  background: rgba(17, 24, 39, 0.8);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.leaderboard-item.is-selected {
+  border-color: var(--green);
+  background: rgba(34, 197, 94, 0.04);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.06);
+}
+
+.leaderboard-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  min-width: 20px;
+}
+
+.leaderboard-item.is-selected .leaderboard-rank {
+  color: var(--green);
+}
+
+.leaderboard-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.leaderboard-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.leaderboard-coords {
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.leaderboard-score-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leaderboard-score {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cross Lake Comparison */
+.cross-lake-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comparison-title {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.comparison-table-wrapper {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(17, 24, 39, 0.4);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 11px;
+}
+
+.comparison-table th {
+  background: rgba(10, 15, 30, 0.8);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 10px 12px;
+  text-transform: uppercase;
+}
+
+.comparison-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-2);
+}
+
+.comparison-row {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.comparison-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.comparison-row.is-selected {
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.comparison-row.is-selected td {
+  color: var(--text);
+}
+
+.lake-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.status-dot.tier-red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.status-dot.tier-orange { background: var(--orange); box-shadow: 0 0 6px var(--orange); }
+.status-dot.tier-yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+
+.trend-cell {
+  font-style: italic;
+  color: var(--text-3);
+}
+
+.comparison-row.is-selected .trend-cell {
+  color: var(--text-2);
+}
+
+/* Helpers */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.font-bold { font-weight: 700; }
+.text-red { color: var(--red) !important; }
+.text-orange { color: var(--orange) !important; }
+.text-yellow { color: var(--yellow) !important; }
+.text-green { color: var(--green) !important; }
+
+/* Custom Marker colors for different tiers */
+.map-lake-marker.marker-tier-red .marker-core {
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+}
+.map-lake-marker.marker-tier-red .marker-pulse-ring {
+  background: rgba(239, 68, 68, 0.4);
+}
+
+.map-lake-marker.marker-tier-orange .marker-core {
+  background: var(--orange);
+  box-shadow: 0 0 8px var(--orange);
+}
+.map-lake-marker.marker-tier-orange .marker-pulse-ring {
+  background: rgba(249, 115, 22, 0.4);
+}
+
+.map-lake-marker.marker-tier-yellow .marker-core {
+  background: var(--yellow);
+  box-shadow: 0 0 8px var(--yellow);
+}
+.map-lake-marker.marker-tier-yellow .marker-pulse-ring {
+  background: rgba(234, 179, 8, 0.4);
+}
+
+.map-lake-marker.is-selected .marker-core {
+  transform: scale(1.3);
+  border-color: #fff;
+}
+
+.map-lake-marker.is-selected .marker-pulse-ring {
+  animation-duration: 1.5s;
+}
+
+

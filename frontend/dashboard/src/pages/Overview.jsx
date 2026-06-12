@@ -22,6 +22,9 @@ import AlertBanner          from '../components/AlertBanner';
 import DemoMode             from '../components/DemoMode';
 import ErrorBoundary        from '../components/ErrorBoundary';
 import AlertConsole         from '../components/AlertConsole';
+import PortfolioView        from '../components/PortfolioView';
+import RiskLeaderboard      from '../components/RiskLeaderboard';
+import CrossLakeComparison  from '../components/CrossLakeComparison';
 
 function Overview() {
   const riskScore     = useLakeStore(s => s.riskScore);
@@ -29,6 +32,9 @@ function Overview() {
   const topDrivers    = useLakeStore(s => s.topDrivers);
   const impactData    = useLakeStore(s => s.impactData);
   const analysisState = useLakeStore(s => s.analysisState);
+
+  const intelViewMode = useLakeStore(s => s.intelViewMode);
+  const setIntelViewMode = useLakeStore(s => s.setIntelViewMode);
 
   const isLoading  = analysisState === 'loading';
   const isCritical = analysisState === 'critical';
@@ -56,7 +62,7 @@ function Overview() {
         <div className="header-controls">
           <DemoMode />
           <div className="header-stat">
-            <span className="header-stat__value">47</span>
+            <span className="header-stat__value">4</span>
             <span className="header-stat__label">Lakes Monitored</span>
           </div>
         </div>
@@ -89,23 +95,64 @@ function Overview() {
         {/* Intel — Risk Gauge · Top Drivers · Impact Severity */}
         <div className="intel-panel">
 
-          <div className="intel-section">
-            <ErrorBoundary>
-              <RiskGauge score={riskScore} tier={riskTier} isLoading={isLoading} />
-            </ErrorBoundary>
+          <div className="intel-toggle-bar">
+            <button
+              type="button"
+              className={`intel-toggle-btn ${intelViewMode === 'single' ? 'is-active' : ''}`}
+              onClick={() => setIntelViewMode('single')}
+            >
+              LAKE INTELLIGENCE
+            </button>
+            <button
+              type="button"
+              className={`intel-toggle-btn ${intelViewMode === 'regional' ? 'is-active' : ''}`}
+              onClick={() => setIntelViewMode('regional')}
+            >
+              REGIONAL PORTFOLIO
+            </button>
           </div>
 
-          <div className="intel-section">
-            <ErrorBoundary>
-              <TopDrivers drivers={topDrivers} isLoading={isLoading} />
-            </ErrorBoundary>
-          </div>
+          {intelViewMode === 'single' ? (
+            <>
+              <div className="intel-section">
+                <ErrorBoundary>
+                  <RiskGauge score={riskScore} tier={riskTier} isLoading={isLoading} />
+                </ErrorBoundary>
+              </div>
 
-          <div className="intel-section">
-            <ErrorBoundary>
-              <ImpactPanel impact={impactData} isLoading={isLoading} />
-            </ErrorBoundary>
-          </div>
+              <div className="intel-section">
+                <ErrorBoundary>
+                  <TopDrivers drivers={topDrivers} isLoading={isLoading} />
+                </ErrorBoundary>
+              </div>
+
+              <div className="intel-section">
+                <ErrorBoundary>
+                  <ImpactPanel impact={impactData} isLoading={isLoading} />
+                </ErrorBoundary>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="intel-section">
+                <ErrorBoundary>
+                  <PortfolioView />
+                </ErrorBoundary>
+              </div>
+
+              <div className="intel-section">
+                <ErrorBoundary>
+                  <RiskLeaderboard />
+                </ErrorBoundary>
+              </div>
+
+              <div className="intel-section">
+                <ErrorBoundary>
+                  <CrossLakeComparison />
+                </ErrorBoundary>
+              </div>
+            </>
+          )}
 
         </div>
 

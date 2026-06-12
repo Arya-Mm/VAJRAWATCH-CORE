@@ -15,6 +15,7 @@ import RiskRadius from './map/RiskRadius';
 import ImpactRadius from './map/ImpactRadius';
 import MapControls from './map/MapControls';
 import DigitalTwin from './digitalTwin/DigitalTwin';
+import LakeSelector from './LakeSelector';
 
 function ThreatMonitoringZone() {
   const selectedLake  = useLakeStore(s => s.selectedLake);
@@ -43,6 +44,8 @@ function ThreatMonitoringZone() {
       <div className="tmz-topbar">
         <span className="tmz-topbar__title">Threat Monitoring Zone</span>
         <div className="tmz-topbar__controls">
+          <LakeSelector />
+          
           {/* Collapse button — only visible on mobile/tablet via CSS */}
           <button
             type="button"
