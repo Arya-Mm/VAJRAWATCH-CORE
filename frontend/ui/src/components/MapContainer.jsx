@@ -5,6 +5,7 @@ import MapGL, { Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import ErrorBoundary from './ErrorBoundary';
 import { MOCK_LAKES } from '../data/mockData';
+import { fetchRiskData } from '../services/api'; // Import api to get initial mock data if needed
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 const MAP_VIEWS = {
@@ -23,9 +24,9 @@ const MAP_VIEWS = {
 // ─── FALLBACK SCREENS ───────────────────────────────────────────────────────
 function MapFallback() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: '#0a0f1e', gap: '1rem' }}>
-      <div style={{ width: '32px', height: '32px', border: '2px solid #334155', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-      <p style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#475569' }}>Loading Map…</p>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: '#F3F4F6', gap: '1rem' }}>
+      <div style={{ width: '32px', height: '32px', border: '2px solid #E5E7EB', borderTopColor: '#000000', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <p style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#6F6F6F' }}>Loading Map…</p>
     </div>
   );
 }
@@ -34,17 +35,17 @@ function MapFallback() {
 export default function MapContainer({ activeLakeId, setActiveLakeId }) {
   const [viewMode, setViewMode] = useState('2D');
   const [isCritical, setIsCritical] = useState(false);
+  const [spatialData, setSpatialData] = useState(null);
+  
   const mapRef = useRef(null);
 
   const activeLake = MOCK_LAKES[activeLakeId] || MOCK_LAKES["PDGL_THULAGI_01"];
 
   // ─── MUTATION OBSERVER: STATE DECOUPLING HACK ─────────────────────────────
-  // Listens to the DOM for changes indicating the system hit "CRITICAL" state
-  // This allows MapContainer to update the marker colour without modifying <Sidebar> internally
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      // Look for the critical red styling or exact text used in Sidebar Phase 4/5
-      const criticalElement = document.querySelector('.bg-red-500\\/15.text-red-500, .bg-orange-500\\/15.text-orange-500');
+      // Look for the critical styling/text
+      const criticalElement = document.querySelector('.border-red-500, .border-orange-500');
       const isNowCritical = !!criticalElement || document.body.innerText.includes('⚠ GLOF RISK RED') || document.body.innerText.includes('⚠ GLOF RISK AMBER') || document.body.innerText.includes('RE-RUN ANALYSIS');
       
       if (isNowCritical !== isCritical) {
@@ -56,44 +57,117 @@ export default function MapContainer({ activeLakeId, setActiveLakeId }) {
     return () => observer.disconnect();
   }, [isCritical]);
 
-  // ─── GEOJSON GENERATION ───────────────────────────────────────────────────
-  const lakesGeoJSON = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: Object.values(MOCK_LAKES).map(lake => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [lake.coordinates.lng, lake.coordinates.lat]
-      },
-      properties: {
-        id: lake.lake_id,
-        name: lake.name,
+  // ─── LISTEN FOR DATA UPDATES (State Decoupling Hack #2) ───────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && e.detail.data && e.detail.data.spatial_data) {
+        setSpatialData(e.detail.data.spatial_data);
       }
-    }))
-  }), []);
-
-  // ─── ACTIVE LAKE GEOMETRY (Polygon & Flow) ────────────────────────────────
-  const polygonGeoJson = useMemo(() => {
-    if (!activeLake?.polygon) return { type: 'FeatureCollection', features: [] };
-    return {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: { type: 'Polygon', coordinates: activeLake.polygon }
-      }]
     };
-  }, [activeLake]);
+    window.addEventListener('vajrawatch-data-update', handler);
+    
+    // Also trigger an initial fetch so the map isn't empty on load
+    fetchRiskData(activeLakeId).then(data => {
+      if (data && data.spatial_data) setSpatialData(data.spatial_data);
+    });
 
-  const flowGeoJson = useMemo(() => {
-    if (!activeLake?.flow_path) return { type: 'FeatureCollection', features: [] };
-    return {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: { type: 'LineString', coordinates: activeLake.flow_path }
-      }]
+    return () => window.removeEventListener('vajrawatch-data-update', handler);
+  }, [activeLakeId]);
+
+  // ─── IMPERATIVE MAP LAYER INJECTION ───────────────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current || !spatialData) return;
+    const map = mapRef.current.getMap();
+
+    const addLayers = () => {
+        if (map.getSource('glof-data')) {
+            map.getSource('glof-data').setData(spatialData);
+            return;
+        }
+
+        map.addSource('glof-data', {
+            type: 'geojson',
+            data: spatialData
+        });
+
+        // Add Lake Layer
+        map.addLayer({
+            id: 'lake-layer',
+            type: 'fill',
+            source: 'glof-data',
+            filter: ['==', 'layer_type', 'lake'],
+            paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.6 }
+        });
+
+        // Add River Layer
+        map.addLayer({
+            id: 'river-layer',
+            type: 'line',
+            source: 'glof-data',
+            filter: ['==', 'layer_type', 'river'],
+            paint: { 
+                'line-color': ['case', ['==', ['get', 'status'], 'critical'], '#ef4444', '#0ea5e9'], 
+                'line-width': 4,
+                'line-dasharray': [2, 2]
+            }
+        });
+
+        // Add Impact Boundary Layer
+        map.addLayer({
+            id: 'impact-layer',
+            type: 'fill',
+            source: 'glof-data',
+            filter: ['==', 'layer_type', 'impact_boundary'],
+            paint: { 
+                'fill-color': '#ef4444', 
+                'fill-opacity': 0.15,
+                'fill-outline-color': '#ef4444'
+            }
+        });
+
+        // Initialize visibility correctly based on current state
+        if (map.getLayer('impact-layer')) {
+            map.setLayoutProperty('impact-layer', 'visibility', isCritical ? 'visible' : 'none');
+        }
     };
-  }, [activeLake]);
+
+    if (map.isStyleLoaded()) {
+        addLayers();
+    } else {
+        map.on('style.load', addLayers);
+    }
+  }, [spatialData]); // Re-run if spatialData updates
+
+  // ─── IMPACT BOUNDARY VISIBILITY ───────────────────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current.getMap();
+    if (map.getLayer('impact-layer')) {
+        map.setLayoutProperty('impact-layer', 'visibility', isCritical ? 'visible' : 'none');
+    }
+  }, [isCritical]);
+
+  // ─── RIVER ANIMATION LOOP ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current.getMap();
+    
+    let animationId;
+    let step = 0;
+    
+    function animate() {
+      if (map.isStyleLoaded() && map.getLayer('river-layer')) {
+        step = (step + 1) % 10;
+        map.setPaintProperty('river-layer', 'line-dasharray', [step, 4, 3]);
+      }
+      animationId = requestAnimationFrame(animate);
+    }
+    
+    animate();
+    return () => cancelAnimationFrame(animationId);
+  }, []);
+
+
 
   // ─── CAMERA ANIMATION (View Mode & Active Lake changes) ───────────────────
   useEffect(() => {
@@ -124,13 +198,13 @@ export default function MapContainer({ activeLakeId, setActiveLakeId }) {
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#0a0f1e', overflow: 'hidden', borderRight: '1px solid #1e293b' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#F9FAFB', overflow: 'hidden', borderRight: '1px solid #E5E7EB' }}>
       
       {/* ── View Toggle ─────────────────────────────────────────────── */}
       <div style={{ position: 'absolute', top: '1.25rem', left: '1.25rem', right: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 }}>
         
         {/* Segmented control */}
-        <div style={{ display: 'flex', background: 'rgba(17,24,39,0.9)', border: '1px solid #334155', borderRadius: '0.625rem', padding: '3px', backdropFilter: 'blur(12px)', gap: '2px' }}>
+        <div style={{ display: 'flex', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '0.625rem', padding: '3px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', gap: '2px' }}>
           {[
             { label: '2D Map', icon: MapIcon, value: '2D' },
             { label: '3D Digital Twin', icon: Box, value: '3D' },
@@ -143,9 +217,8 @@ export default function MapContainer({ activeLakeId, setActiveLakeId }) {
                 padding: '0.4rem 0.875rem', borderRadius: '0.5rem', border: 'none',
                 cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '0.75rem',
                 fontWeight: 700, letterSpacing: '0.05em',
-                background: viewMode === value ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : 'transparent',
-                color: viewMode === value ? 'white' : '#64748b',
-                boxShadow: viewMode === value ? '0 2px 8px rgba(59,130,246,0.35)' : 'none',
+                background: viewMode === value ? '#000000' : 'transparent',
+                color: viewMode === value ? '#FFFFFF' : '#6F6F6F',
                 transition: 'all 0.2s ease',
               }}
             >
@@ -162,9 +235,9 @@ export default function MapContainer({ activeLakeId, setActiveLakeId }) {
               key={i}
               style={{
                 width: '36px', height: '36px', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', background: 'rgba(17,24,39,0.9)',
-                border: '1px solid #334155', borderRadius: '0.5rem', cursor: 'pointer',
-                color: '#64748b', backdropFilter: 'blur(12px)',
+                justifyContent: 'center', background: '#FFFFFF',
+                border: '1px solid #E5E7EB', borderRadius: '0.5rem', cursor: 'pointer',
+                color: '#6F6F6F', boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
               }}
             >
               <Icon size={15} />
@@ -184,11 +257,11 @@ export default function MapContainer({ activeLakeId, setActiveLakeId }) {
                 latitude: activeLake.coordinates.lat,
                 ...MAP_VIEWS[viewMode]
               }}
-              mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+              mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
               interactive
               terrain={viewMode === '3D' ? { source: 'terrain-source', exaggeration: 1.5 } : undefined}
               onClick={onMapClick}
-              interactiveLayerIds={['unselected-lakes']}
+              interactiveLayerIds={['lake-layer']}
               cursor="crosshair"
             >
               {/* ── 3D TERRAIN SOURCES ── */}
@@ -216,76 +289,7 @@ export default function MapContainer({ activeLakeId, setActiveLakeId }) {
                 </>
               )}
 
-              {/* ── PDGL GEOJSON LAYERS ── */}
-              <Source id="pdgl-points" type="geojson" data={lakesGeoJSON}>
-                
-                {/* Layer for Unselected Lakes: Muted to preserve Color Singularity */}
-                <Layer
-                  id="unselected-lakes"
-                  type="circle"
-                  filter={['!=', ['get', 'id'], activeLakeId]}
-                  paint={{
-                    'circle-radius': 4,
-                    'circle-color': '#334155', // UI Border color
-                    'circle-stroke-width': 1,
-                    'circle-stroke-color': '#1e293b'
-                  }}
-                />
 
-                {/* Layer for Selected Lake: Dominates visual attention */}
-                <Layer
-                  id="selected-lake-core"
-                  type="circle"
-                  filter={['==', ['get', 'id'], activeLakeId]}
-                  paint={{
-                    'circle-radius': 8,
-                    'circle-color': isCritical ? (activeLake.risk_tier === 'RED' ? '#ef4444' : '#f59e0b') : '#3b82f6',
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#ffffff'
-                  }}
-                />
-                
-                {/* Layer for Labels (All Lakes) */}
-                <Layer
-                  id="pdgl-labels"
-                  type="symbol"
-                  layout={{
-                    'text-field': ['get', 'name'],
-                    'text-font': ['Open Sans Regular'],
-                    'text-size': 12,
-                    'text-offset': [0, 1.5],
-                    'text-anchor': 'top'
-                  }}
-                  paint={{
-                    'text-color': '#94a3b8',
-                    'text-halo-color': '#0a0f1e',
-                    'text-halo-width': 2
-                  }}
-                />
-              </Source>
-
-              {/* ── ACTIVE LAKE POLYGON ── */}
-              <Source id="active-lake-polygon" type="geojson" data={polygonGeoJson}>
-                <Layer
-                  id="lake-fill"
-                  type="fill"
-                  paint={{ 'fill-color': '#3b82f6', 'fill-opacity': 0.4 }}
-                />
-              </Source>
-
-              {/* ── ACTIVE RIVER FLOW ── */}
-              <Source id="active-river-flow" type="geojson" data={flowGeoJson}>
-                <Layer
-                  id="river-line"
-                  type="line"
-                  paint={{
-                    'line-color': '#ef4444',
-                    'line-width': 3,
-                    'line-opacity': 0.8,
-                    'line-dasharray': [2, 2]
-                  }}
-                />
-              </Source>
 
             </MapGL>
           </Suspense>
@@ -295,14 +299,14 @@ export default function MapContainer({ activeLakeId, setActiveLakeId }) {
       {/* ── HUD Overlay ─────────────────────────────────────── */}
       <div style={{ position: 'absolute', bottom: '1.25rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', pointerEvents: 'none', zIndex: 20 }}>
         {viewMode === '3D' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(17,24,39,0.85)', border: '1px solid #334155', borderRadius: '0.5rem', padding: '0.5rem 1rem', backdropFilter: 'blur(8px)' }}>
-            <Box size={13} color={isCritical ? (activeLake.risk_tier === 'RED' ? "#ef4444" : "#f59e0b") : "#3b82f6"} />
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '0.5rem', padding: '0.5rem 1rem', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+            <Box size={13} color={isCritical ? (activeLake.risk_tier === 'RED' ? "#ef4444" : "#eab308") : "#3b82f6"} />
+            <span style={{ fontSize: '0.72rem', color: '#6F6F6F', fontWeight: 500 }}>
               MapLibre 3D Terrain · Satellite Base
             </span>
           </div>
         )}
-        <div style={{ fontSize: '0.6rem', color: '#334155', fontFamily: 'monospace', letterSpacing: '0.06em' }}>
+        <div style={{ fontSize: '0.6rem', color: '#6F6F6F', fontFamily: 'monospace', letterSpacing: '0.06em' }}>
           {activeLake.coordinates.lat.toFixed(4)}°N · {activeLake.coordinates.lng.toFixed(4)}°E · Drag to orbit · Scroll to zoom
         </div>
       </div>

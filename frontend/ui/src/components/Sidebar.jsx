@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import axios from 'axios';
+import { runAnalysis, fetchAudioWarning } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin,
@@ -25,8 +25,7 @@ const SIMULATED_LOADING_MS = 1500; // Strict 1.5s requirement from Master Prompt
 function SkeletonBlock({ height = '1.25rem', width = '100%', style = {} }) {
   return (
     <div
-      className="animate-pulse"
-      style={{ height, width, borderRadius: '0.375rem', background: '#1e293b', ...style }}
+      style={{ height, width, borderRadius: '0.375rem', background: '#F3F4F6', ...style }}
     />
   );
 }
@@ -61,20 +60,18 @@ function LoadingState() {
 }
 
 function CriticalAlertBanner({ data }) {
-  // Defensive check: if risk_score is lower than critical threshold, we can adjust styling,
-  // but for the sake of the Anticipation Loop demo, hitting "RUN ANALYSIS" forces the critical state.
   return (
-    <div className={`mb-1 p-4 rounded-lg border ${data.risk_tier === 'RED' ? 'bg-red-500/10 border-red-500/50' : 'bg-orange-500/10 border-orange-500/50'}`}>
+    <div className={`mb-1 p-4 rounded-lg border-2 bg-[#FFFFFF] ${data.risk_tier === 'RED' ? 'border-red-500' : 'border-orange-500'}`}>
       <div className="flex items-start gap-3">
         <AlertTriangle size={18} className={data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'} />
         <div className="flex-1">
           <div className={`text-[12px] font-extrabold tracking-widest uppercase mb-1 ${data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'}`}>
             ⚠ GLOF RISK {data.risk_tier} — IMMEDIATE ACTION REQUIRED
           </div>
-          <div className="text-[11.5px] text-slate-200/75 leading-relaxed">
+          <div className="text-[11.5px] text-[#000000] leading-relaxed">
             LangGraph agent analysis complete. Risk score <strong className={data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'}>{data.risk_score}/100</strong>.
-            Estimated flood front ETA: <strong className="text-[#f8fafc]">~4 hours</strong>.
-            Population at risk: <strong className="text-[#f8fafc]">{data.impact.population.toLocaleString()} people</strong>.
+            Estimated flood front ETA: <strong className="text-[#000000]">~4 hours</strong>.
+            Population at risk: <strong className="text-[#000000]">{data.impact.population.toLocaleString()} people</strong>.
           </div>
         </div>
       </div>
@@ -84,13 +81,13 @@ function CriticalAlertBanner({ data }) {
 
 function AgentTrace({ trace, index }) {
   return (
-    <div className={`flex gap-3 py-2 ${index < 3 ? 'border-b border-[#334155]' : ''}`}>
-      <div className="w-5 h-5 rounded-full bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0 text-[10px] font-bold text-blue-500 mt-[1px]">
+    <div className={`flex gap-3 py-2 ${index < 3 ? 'border-b border-[#E5E7EB]' : ''}`}>
+      <div className="w-5 h-5 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-blue-600 mt-[1px]">
         {trace.step}
       </div>
       <div className="flex-1">
-        <div className="text-[10.5px] font-bold text-blue-500 mb-[1px]">{trace.agent}</div>
-        <div className="text-[11px] text-slate-400 leading-relaxed">{trace.message}</div>
+        <div className="text-[10.5px] font-bold text-[#000000] mb-[1px]">{trace.agent}</div>
+        <div className="text-[11px] text-[#6F6F6F] leading-relaxed">{trace.message}</div>
       </div>
       <CheckCircle size={12} className="text-green-500 mt-1 shrink-0" />
     </div>
@@ -124,7 +121,8 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
       setAudioPlaying(false);
       return;
     }
-    const audio = new Audio('/warning.mp3');
+    const audioUrl = data.audio_url ? fetchAudioWarning(data.audio_url) : '/warning.mp3';
+    const audio = new Audio(audioUrl);
     audioRef.current = audio;
     audio.addEventListener('ended', () => setAudioPlaying(false));
     audio.addEventListener('error', () => setTimeout(() => setAudioPlaying(false), 3000));
@@ -139,12 +137,10 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
     const startTime = Date.now();
     
     try {
-      // Phase 5: Fetch specific lake
-      const response = await axios.get(`http://localhost:8000/risk/${activeLakeId}`);
-      setLiveData(response.data);
+      const result = await runAnalysis(activeLakeId);
+      setLiveData(result);
     } catch (error) {
-      console.warn(`Backend offline, silent fallback to mock data for ${activeLakeId}`);
-      setLiveData(MOCK_LAKES[activeLakeId]);
+      console.warn(`Fallback triggered in Sidebar`);
     } finally {
       // Anticipation Loop: Force minimum SIMULATED_LOADING_MS duration
       const elapsed = Date.now() - startTime;
@@ -158,17 +154,17 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
 
   return (
     <aside
-      className="flex flex-col h-full bg-[#111827] overflow-hidden"
+      className="flex flex-col h-full bg-[#FFFFFF] overflow-hidden"
       style={{ minWidth: '400px', flex: '0 0 40%' }} // Prevents flex collapse
     >
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
         
         {/* Header Section */}
-        <div className="flex items-start justify-between pb-3.5 border-b border-[#334155]">
+        <div className="flex items-start justify-between pb-3.5 border-b border-[#E5E7EB]">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <MapPin size={13} className="text-blue-500" />
-              <span className="text-[10.5px] font-semibold text-slate-400 tracking-widest uppercase">
+              <MapPin size={13} className="text-black" />
+              <span className="text-[10.5px] font-semibold text-[#6F6F6F] tracking-widest uppercase">
                 Selected Target
               </span>
             </div>
@@ -177,25 +173,25 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
             <select
               value={activeLakeId}
               onChange={(e) => setActiveLakeId(e.target.value)}
-              className="text-3xl font-extrabold text-[#f8fafc] tracking-tight leading-tight appearance-none bg-transparent border-none p-0 outline-none cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+              className="text-3xl font-serif text-[#000000] tracking-tight leading-tight appearance-none bg-transparent border-none p-0 outline-none cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
               style={{ paddingRight: '1rem' }} // Add a little space for the invisible hit area
             >
               {Object.values(MOCK_LAKES).map(lake => (
-                <option key={lake.lake_id} value={lake.lake_id} className="bg-[#111827] text-[#f8fafc]">
+                <option key={lake.lake_id} value={lake.lake_id} className="bg-[#FFFFFF] text-[#000000] font-sans text-base">
                   {lake.name}
                 </option>
               ))}
             </select>
 
-            <div className="text-[10.5px] font-mono text-slate-400 mt-1">
+            <div className="text-[10.5px] font-mono text-[#6F6F6F] mt-1">
               {data.lake_id}
             </div>
           </div>
           <div
             className={`px-3 py-1.5 rounded-full border text-[10.5px] font-extrabold tracking-widest uppercase shrink-0 transition-none ${
-              isCritical && data.risk_tier === 'RED' ? 'bg-red-500/15 border-red-500/50 text-red-500' 
-              : isCritical && data.risk_tier === 'AMBER' ? 'bg-orange-500/15 border-orange-500/50 text-orange-500'
-              : 'bg-slate-500/15 border-[#334155] text-slate-400'
+              isCritical && data.risk_tier === 'RED' ? 'bg-red-50 border-red-500 text-red-500' 
+              : isCritical && data.risk_tier === 'AMBER' ? 'bg-orange-50 border-orange-500 text-orange-500'
+              : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#6F6F6F]'
             }`}
           >
             {isCritical ? `● ${data.risk_tier}` : 'STANDBY'}
@@ -216,13 +212,13 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
               {isCritical && <CriticalAlertBanner data={data} />}
 
               {/* Risk Gauge */}
-              <div className="bg-[#1a2236] border border-[#334155] rounded-xl p-3">
+              <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <BarChart2 size={13} className="text-blue-500" />
-                  <span className="text-[10.5px] font-bold text-slate-400 tracking-widest uppercase">
+                  <BarChart2 size={13} className="text-black" />
+                  <span className="text-[10.5px] font-bold text-[#6F6F6F] tracking-widest uppercase">
                     AI Risk Assessment
                   </span>
-                  <span className={`ml-auto text-[9px] font-semibold tracking-wider ${isCritical ? 'text-green-500/60' : 'text-slate-400/60'}`}>
+                  <span className={`ml-auto text-[9px] font-semibold tracking-wider ${isCritical ? 'text-green-600' : 'text-[#6F6F6F]'}`}>
                     {isCritical ? '● ONLINE' : '● STANDBY'}
                   </span>
                 </div>
@@ -231,10 +227,10 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
               </div>
 
               {/* Top Risk Drivers (Von Restorff Effect) */}
-              <div className="bg-[#1a2236] border border-[#334155] rounded-xl p-4">
+              <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4">
                 <div className="flex items-center gap-1.5 mb-3">
-                  <TrendingUp size={13} className="text-blue-500" />
-                  <span className="text-[10.5px] font-bold text-slate-400 tracking-widest uppercase">
+                  <TrendingUp size={13} className="text-black" />
+                  <span className="text-[10.5px] font-bold text-[#6F6F6F] tracking-widest uppercase">
                     Top Risk Drivers
                   </span>
                 </div>
@@ -245,19 +241,19 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
                     return (
                       <div
                         key={`${driver.feature}-${i}`}
-                        className={`flex items-center justify-between p-2 rounded ${isHighlighted ? (data.risk_tier === 'RED' ? 'bg-red-500/5 border border-red-500/20' : 'bg-orange-500/5 border border-orange-500/20') : ''}`}
+                        className={`flex items-center justify-between p-2 rounded ${isHighlighted ? (data.risk_tier === 'RED' ? 'bg-red-50 border border-red-200' : 'bg-orange-50 border border-orange-200') : ''}`}
                       >
                         <div className="flex items-center gap-2">
-                          {isHighlighted ? <Waves size={13} className={data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'} /> : <TrendingUp size={13} className="text-slate-400" />}
-                          <span className={`text-[12.5px] font-semibold ${isHighlighted ? 'text-[#f8fafc]' : 'text-slate-300'}`}>
+                          {isHighlighted ? <Waves size={13} className={data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'} /> : <TrendingUp size={13} className="text-[#6F6F6F]" />}
+                          <span className={`text-[12.5px] font-semibold ${isHighlighted ? 'text-[#000000]' : 'text-[#6F6F6F]'}`}>
                             {driver.feature}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm font-extrabold tracking-tight ${isHighlighted ? (data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500') : 'text-[#f8fafc]'}`}>
+                          <span className={`text-sm font-extrabold tracking-tight ${isHighlighted ? (data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500') : 'text-[#000000]'}`}>
                             {driver.value}
                           </span>
-                          <span className={`text-[10.5px] font-bold px-1.5 py-[1px] rounded tracking-wide ${isHighlighted ? (data.risk_tier === 'RED' ? 'text-red-500/70 bg-red-500/10' : 'text-orange-500/70 bg-orange-500/10') : 'text-slate-400 bg-[#0f172a]'}`}>
+                          <span className={`text-[10.5px] font-bold px-1.5 py-[1px] rounded tracking-wide ${isHighlighted ? (data.risk_tier === 'RED' ? 'text-red-700 bg-red-100' : 'text-orange-700 bg-orange-100') : 'text-[#6F6F6F] bg-[#E5E7EB]'}`}>
                             {driver.anomaly_ratio}
                           </span>
                         </div>
@@ -268,50 +264,50 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
               </div>
 
               {/* Impact Zone */}
-              <div className="bg-[#1a2236] border border-[#334155] rounded-xl p-4">
+              <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4">
                 <div className="flex items-center gap-1.5 mb-3.5">
-                  <AlertTriangle size={13} className="text-orange-500" />
-                  <span className="text-[10.5px] font-bold text-slate-400 tracking-widest uppercase">
+                  <AlertTriangle size={13} className="text-black" />
+                  <span className="text-[10.5px] font-bold text-[#6F6F6F] tracking-widest uppercase">
                     Impact Zone — Downstream
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                  <div className="bg-[#0f172a] border border-[#1e293b] rounded-lg py-3 px-2 flex flex-col items-center gap-1">
-                    <Users size={15} className="text-orange-500" />
-                    <div className="text-base font-black text-[#f8fafc] leading-none mt-0.5">{data.impact.population.toLocaleString()}</div>
-                    <div className="text-[9px] text-slate-500 font-medium tracking-wide">Population</div>
+                  <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg py-3 px-2 flex flex-col items-center gap-1">
+                    <Users size={15} className="text-black" />
+                    <div className="text-base font-black text-[#000000] leading-none mt-0.5">{data.impact.population.toLocaleString()}</div>
+                    <div className="text-[9px] text-[#6F6F6F] font-medium tracking-wide">Population</div>
                   </div>
-                  <div className="bg-[#0f172a] border border-[#1e293b] rounded-lg py-3 px-2 flex flex-col items-center gap-1">
-                    <Zap size={15} className="text-yellow-500" />
-                    <div className="text-base font-black text-[#f8fafc] leading-none mt-0.5">
-                      {data.impact.hydropower_mw} <span className="text-[9.5px] font-bold text-slate-500">MW</span>
+                  <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg py-3 px-2 flex flex-col items-center gap-1">
+                    <Zap size={15} className="text-black" />
+                    <div className="text-base font-black text-[#000000] leading-none mt-0.5">
+                      {data.impact.hydropower_mw} <span className="text-[9.5px] font-bold text-[#6F6F6F]">MW</span>
                     </div>
-                    <div className="text-[9px] text-slate-500 font-medium tracking-wide">Hydropower</div>
+                    <div className="text-[9px] text-[#6F6F6F] font-medium tracking-wide">Hydropower</div>
                   </div>
-                  <div className="bg-[#0f172a] border border-[#1e293b] rounded-lg py-3 px-2 flex flex-col items-center gap-1">
-                    <GitBranch size={15} className="text-red-500" />
-                    <div className="text-base font-black text-[#f8fafc] leading-none mt-0.5">{data.impact.bridges_at_risk || 4}</div>
-                    <div className="text-[9px] text-slate-500 font-medium tracking-wide">Bridges at Risk</div>
+                  <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-lg py-3 px-2 flex flex-col items-center gap-1">
+                    <GitBranch size={15} className="text-black" />
+                    <div className="text-base font-black text-[#000000] leading-none mt-0.5">{data.impact.bridges_at_risk || 4}</div>
+                    <div className="text-[9px] text-[#6F6F6F] font-medium tracking-wide">Bridges at Risk</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-2 bg-[#0f172a] rounded-lg border border-[#1e293b]">
-                  <ChevronRight size={12} className="text-slate-500" />
-                  <span className="text-[11px] text-slate-500">Historical analog:</span>
-                  <span className="text-[11px] font-bold text-orange-500 ml-auto">{data.impact.historical_analog}</span>
+                <div className="flex items-center gap-2 px-3 py-2 bg-[#FFFFFF] rounded-lg border border-[#E5E7EB]">
+                  <ChevronRight size={12} className="text-[#6F6F6F]" />
+                  <span className="text-[11px] text-[#6F6F6F]">Historical analog:</span>
+                  <span className="text-[11px] font-bold text-[#000000] ml-auto">{data.impact.historical_analog}</span>
                 </div>
               </div>
 
               {/* Agent Traces */}
               {isCritical && (
-                <div className="bg-[#1a2236] border border-[#334155] rounded-xl p-4 overflow-hidden">
+                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4 overflow-hidden">
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
-                      <GitBranch size={13} className="text-blue-500" />
-                      <span className="text-[10.5px] font-bold text-slate-400 tracking-widest uppercase">
+                      <GitBranch size={13} className="text-black" />
+                      <span className="text-[10.5px] font-bold text-[#6F6F6F] tracking-widest uppercase">
                         LangGraph Agent Traces
                       </span>
                     </div>
-                    <span className="text-[9.5px] font-semibold text-green-500">✓ Complete</span>
+                    <span className="text-[9.5px] font-semibold text-green-600">✓ Complete</span>
                   </div>
 
                   {data.agent_traces.map((trace, i) => (
@@ -320,9 +316,7 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
 
                   <button
                     onClick={handlePlayWarning}
-                    className={`flex items-center justify-center gap-2 w-full mt-3 px-4 py-2.5 rounded-lg border text-xs font-semibold ${
-                      audioPlaying ? 'bg-red-500/15 border-red-500/60 text-red-500' : 'bg-red-500/10 border-red-500/30 text-red-500'
-                    }`}
+                    className="flex items-center justify-center gap-2 w-full mt-3 px-4 py-2.5 rounded-lg border border-[#000000] text-[#000000] bg-white text-xs font-semibold hover:bg-gray-50 transition-colors"
                   >
                     <Volume2 size={14} />
                     <span>{audioPlaying ? 'Playing Warning…' : 'Play Nepali Warning Broadcast'}</span>
@@ -337,27 +331,17 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
       </div>
 
       {/* Primary Action Button (Fitts's Law Target) */}
-      <div className="p-4 border-t border-[#334155] bg-[#111827] shrink-0">
+      <div className="p-4 border-t border-[#E5E7EB] bg-[#FFFFFF] shrink-0">
         <button
           onClick={handleRunAnalysis}
           disabled={isLoading}
-          className={`flex items-center justify-center gap-2 w-full text-white rounded-lg font-extrabold text-sm py-4 ${
-            isLoading ? 'cursor-not-allowed bg-blue-900' : 'cursor-pointer'
+          className={`flex items-center justify-center gap-2 w-full text-white rounded-full font-extrabold text-sm py-4 transition-transform duration-200 ${
+            isLoading ? 'cursor-not-allowed bg-gray-400' : 'cursor-pointer bg-[#000000] hover:scale-105'
           }`}
-          style={{
-            background: isCritical
-              ? (data.risk_tier === 'RED' ? '#dc2626' : data.risk_tier === 'AMBER' ? '#f59e0b' : '#10b981')
-              : isLoading
-              ? '#1e3a8a'
-              : '#2563eb',
-            boxShadow: isCritical
-              ? (data.risk_tier === 'RED' ? '0 4px 24px rgba(220,38,38,0.4)' : '0 4px 24px rgba(245,158,11,0.4)')
-              : '0 4px 24px rgba(37,99,235,0.3)',
-          }}
         >
           {isLoading ? (
             <>
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin text-white" />
               <span>Analyzing Satellite Data…</span>
             </>
           ) : isCritical ? (
@@ -372,7 +356,7 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
             </>
           )}
         </button>
-        <div className="text-center mt-2 text-[10.5px] text-slate-400 tracking-wide">
+        <div className="text-center mt-2 text-[10.5px] text-[#6F6F6F] tracking-wide">
           {isLoading ? 'Running local simulation…' : isCritical ? 'Analysis complete · Online' : 'Ready to run local analysis'}
         </div>
       </div>

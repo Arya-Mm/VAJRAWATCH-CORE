@@ -15,3 +15,8 @@ redis
 structlog
 uvicorn[standard]
 
+
+numpy
+langgraph
+gTTS
+requests

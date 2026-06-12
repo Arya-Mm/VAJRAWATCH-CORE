@@ -241,6 +241,50 @@ def get_risk(lake_id: str) -> dict[str, Any]:
     if risk.get("risk_tier") == "RED":
         audio_url = generate_nepali_tts_elevenlabs(lake_id, risk["risk_score"])
 
+    # Flow rate calculation
+    current_river_flow_m3s = 450.5 if risk.get("risk_tier") == "RED" else 125.0
+    river_status = "critical" if risk.get("risk_tier") == "RED" else "normal"
+
+    spatial_data = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": { "layer_type": "lake", "name": "Thulagi Lake" },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [[84.485, 28.530], [84.495, 28.530], [84.495, 28.520], [84.485, 28.520], [84.485, 28.530]]
+                    ]
+                }
+            },
+            {
+                "type": "Feature",
+                "properties": { 
+                    "layer_type": "river", 
+                    "flow_rate_m3s": current_river_flow_m3s, 
+                    "status": river_status 
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [84.490, 28.520], [84.490, 28.500], [84.480, 28.480], [84.480, 28.450]
+                    ]
+                }
+            },
+            {
+                "type": "Feature",
+                "properties": { "layer_type": "impact_boundary" },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [[84.470, 28.490], [84.500, 28.490], [84.490, 28.440], [84.460, 28.440], [84.470, 28.490]]
+                    ]
+                }
+            }
+        ]
+    }
+
     return {
         **risk,
         "lake_id": lake_id,
@@ -256,6 +300,8 @@ def get_risk(lake_id: str) -> dict[str, Any]:
             "historical_analog": "South Lonak 2023",
             "evacuation_route": "Besisahar → Khudi → Bhulebhule → Bharatpur (4.5h)",
         },
+        "spatial_data": spatial_data,
+        "current_river_flow_m3s": current_river_flow_m3s,
     }
 
 

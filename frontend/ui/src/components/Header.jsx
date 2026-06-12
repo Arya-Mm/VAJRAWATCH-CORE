@@ -1,18 +1,32 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Radio, Satellite } from 'lucide-react';
+import { Activity, Radio, Satellite, Server } from 'lucide-react';
+import { fetchHealth } from '../services/api';
 import { SYSTEM_STATS } from '../data/mockData';
 
 /**
  * Header — F-Pattern top-left branding anchor
  * VajraWatch brand + live system status badge
+ * Brutalist Light Mode Update
  */
 export default function Header() {
+  const [isLive, setIsLive] = useState(false);
+  const [healthOk, setHealthOk] = useState(false);
+
+  useEffect(() => {
+    fetchHealth().then(res => setHealthOk(res.status === 'ok'));
+    
+    const handler = (e) => setIsLive(!e.detail.isMock);
+    window.addEventListener('vajrawatch-data-mode', handler);
+    return () => window.removeEventListener('vajrawatch-data-mode', handler);
+  }, []);
+
   return (
     <header
       style={{
         height: '64px',
-        background: 'var(--bg-surface)',
-        borderBottom: '1px solid var(--border-subtle)',
+        background: '#FFFFFF',
+        borderBottom: '1px solid #E5E7EB',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -34,12 +48,11 @@ export default function Header() {
           style={{
             width: '36px',
             height: '36px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)',
+            borderRadius: '4px',
+            background: '#000000',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 16px rgba(59, 130, 246, 0.35)',
             flexShrink: 0,
           }}
         >
@@ -57,26 +70,15 @@ export default function Header() {
         <div>
           <div
             style={{
-              fontWeight: 800,
-              fontSize: '1rem',
-              letterSpacing: '-0.02em',
-              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-serif)',
+              fontWeight: 400,
+              fontSize: '1.4rem',
+              color: '#000000',
               lineHeight: 1,
+              marginTop: '4px',
             }}
           >
             VajraWatch
-          </div>
-          <div
-            style={{
-              fontSize: '0.7rem',
-              fontWeight: 500,
-              color: 'var(--text-muted)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              marginTop: '2px',
-            }}
-          >
-            GLOF Command Center
           </div>
         </div>
       </motion.div>
@@ -92,19 +94,19 @@ export default function Header() {
           gap: '0.5rem',
         }}
       >
-        <div style={{ width: '40px', height: '1px', background: 'var(--border)' }} />
+        <div style={{ width: '40px', height: '1px', background: '#E5E7EB' }} />
         <span
           style={{
             fontSize: '0.65rem',
-            fontWeight: 600,
+            fontWeight: 700,
             letterSpacing: '0.15em',
-            color: 'var(--text-muted)',
+            color: '#6F6F6F',
             textTransform: 'uppercase',
           }}
         >
           AI Early Warning
         </span>
-        <div style={{ width: '40px', height: '1px', background: 'var(--border)' }} />
+        <div style={{ width: '40px', height: '1px', background: '#E5E7EB' }} />
       </div>
 
       {/* RIGHT — System status indicators */}
@@ -120,12 +122,12 @@ export default function Header() {
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem',
-            color: 'var(--text-muted)',
+            color: '#6F6F6F',
             fontSize: '0.75rem',
           }}
         >
-          <Satellite size={13} color="var(--accent-blue)" />
-          <span style={{ fontWeight: 500 }}>{SYSTEM_STATS.satellites_active} SAT</span>
+          <Satellite size={13} color="#000000" />
+          <span style={{ fontWeight: 600 }}>{SYSTEM_STATS.satellites_active} SAT</span>
         </div>
 
         {/* Last scan */}
@@ -134,40 +136,94 @@ export default function Header() {
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem',
-            color: 'var(--text-muted)',
+            color: '#6F6F6F',
             fontSize: '0.75rem',
           }}
         >
-          <Activity size={13} color="var(--accent-green)" />
-          <span>{SYSTEM_STATS.last_scan}</span>
+          <Activity size={13} color="#000000" />
+          <span style={{ fontWeight: 600 }}>{SYSTEM_STATS.last_scan}</span>
         </div>
 
-        {/* 47 Lakes Monitored — status badge (isolation principle) */}
-        <motion.div
-          whileHover={{ scale: 1.03 }}
+        {/* Lakes Monitored */}
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            background: 'rgba(34, 197, 94, 0.08)',
-            border: '1px solid rgba(34, 197, 94, 0.25)',
+            background: '#F9FAFB',
+            border: '1px solid #E5E7EB',
             borderRadius: '999px',
             padding: '0.3rem 0.75rem',
           }}
         >
-          <span className="status-dot" />
+          <span
+            style={{
+              display: 'inline-block',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: '#000000',
+            }}
+          />
           <span
             style={{
               fontSize: '0.75rem',
               fontWeight: 700,
-              color: '#22c55e',
+              color: '#000000',
               letterSpacing: '0.04em',
             }}
           >
             {SYSTEM_STATS.lakes_monitored} Lakes Monitored
           </span>
-          <Radio size={11} color="#22c55e" style={{ opacity: 0.8 }} />
-        </motion.div>
+        </div>
+
+        {/* Backend Health Check */}
+        <div
+          title={healthOk ? "Backend Connected" : "Backend Offline"}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            color: '#6F6F6F',
+            fontSize: '0.75rem',
+            marginLeft: '0.5rem',
+          }}
+        >
+          <Server size={13} color={healthOk ? "#22c55e" : "#ef4444"} />
+        </div>
+
+        {/* Live/Demo Indicator */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: isLive ? 'rgba(34, 197, 94, 0.1)' : '#F9FAFB',
+            border: `1px solid ${isLive ? 'rgba(34, 197, 94, 0.3)' : '#E5E7EB'}`,
+            borderRadius: '4px',
+            padding: '0.2rem 0.5rem',
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-block',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: isLive ? '#22c55e' : '#9CA3AF',
+            }}
+          />
+          <span
+            style={{
+              fontSize: '0.65rem',
+              fontWeight: 800,
+              color: isLive ? '#16a34a' : '#6F6F6F',
+              letterSpacing: '0.1em',
+            }}
+          >
+            {isLive ? 'LIVE' : 'DEMO'}
+          </span>
+        </div>
       </motion.div>
     </header>
   );

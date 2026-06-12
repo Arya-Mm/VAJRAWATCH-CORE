@@ -88,7 +88,8 @@ export default function RiskGauge({ score = 84, animated = true }) {
               );
             })}
 
-            {/* Glow layer — underneath fill */}
+            {/* Glow layer — underneath fill — REMOVED FOR BRUTALIST AESTHETIC */}
+            {/*
             <circle
               r={RADIUS}
               fill="none"
@@ -100,6 +101,7 @@ export default function RiskGauge({ score = 84, animated = true }) {
               transform={`rotate(${rotation})`}
               style={{ opacity: 0.15, filter: `blur(4px)` }}
             />
+            */}
 
             {/* Fill arc — animated */}
             <motion.circle
@@ -117,7 +119,6 @@ export default function RiskGauge({ score = 84, animated = true }) {
                 ease: [0.34, 1.56, 0.64, 1], // spring-like overshoot
                 delay: animated ? 0.5 : 0,
               }}
-              style={{ filter: `drop-shadow(0 0 6px ${glow})` }}
             />
 
             {/* Needle dot at current position */}
@@ -127,7 +128,6 @@ export default function RiskGauge({ score = 84, animated = true }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.6, duration: 0.3 }}
-              style={{ filter: `drop-shadow(0 0 8px ${glow})` }}
               transform={(() => {
                 const angle = (rotation + (score / 100) * 270) * (Math.PI / 180);
                 const x = RADIUS * Math.cos(angle);
@@ -155,12 +155,12 @@ export default function RiskGauge({ score = 84, animated = true }) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 1.2, duration: 0.4, type: 'spring' }}
             style={{
-              fontSize: '2.5rem',
-              fontWeight: 900,
+              fontFamily: 'var(--font-serif)',
+              fontSize: '3rem',
+              fontWeight: 400,
               color: color,
               lineHeight: 1,
               letterSpacing: '-0.04em',
-              textShadow: `0 0 20px ${glow}`,
             }}
           >
             {score}
@@ -199,7 +199,6 @@ export default function RiskGauge({ score = 84, animated = true }) {
             height: '7px',
             borderRadius: '50%',
             background: color,
-            boxShadow: `0 0 8px ${glow}`,
           }}
         />
         <span
@@ -221,7 +220,6 @@ export default function RiskGauge({ score = 84, animated = true }) {
             height: '7px',
             borderRadius: '50%',
             background: color,
-            boxShadow: `0 0 8px ${glow}`,
           }}
         />
       </motion.div>
