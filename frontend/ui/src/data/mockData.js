@@ -26,7 +26,7 @@ export const THULAGI_LAKE_DATA = {
     },
   ],
   impact: {
-    population: 12480,
+    population: 124800,
     hydropower_mw: 186,
     bridges_at_risk: 7,
     historical_analog: "South Lonak 2023",

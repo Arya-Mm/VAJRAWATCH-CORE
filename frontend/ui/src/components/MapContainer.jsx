@@ -1,285 +1,147 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Map, Box, Layers, Navigation2, Maximize2 } from 'lucide-react';
+import { useState, useRef, useMemo, Suspense } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import { motion } from 'framer-motion';
+import { Map as MapIcon, Box, AlertTriangle } from 'lucide-react';
 
-/**
- * MapContainer — Left panel (60% width)
- * Contains 2D/3D view toggle and dark canvas placeholder
- * Ready for Three.js / MapLibre integration in Phase 3
- */
-export default function MapContainer() {
-  const [viewMode, setViewMode] = useState('2D');
+// ─── Real 2D Interactive Map (MapLibre) ──────────────
+import MapGL, { Marker } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
+
+// ─── 3D Flood Particle System ──────────────
+function FloodParticles() {
+  const pointsRef = useRef();
+  const particleCount = 200;
+  
+  // FIX: Memoize the array so it is only created once. Prevents WebGL/Vite HMR memory leaks.
+  const positions = useMemo(() => {
+    const pos = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 4;
+      pos[i * 3 + 1] = -Math.random() * 15;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 4;
+    }
+    return pos;
+  }, [particleCount]);
+
+  useFrame(() => {
+    if (pointsRef.current) {
+      const pos = pointsRef.current.geometry.attributes.position.array;
+      for (let i = 0; i < pos.length; i += 3) {
+        pos[i + 1] -= 0.08;
+        if (pos[i + 1] < -15) pos[i + 1] = 0;
+      }
+      pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      style={{
-        width: '60%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        background: 'var(--bg-base)',
-        borderRight: '1px solid var(--border-subtle)',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Toolbar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '1.25rem',
-          left: '1.25rem',
-          right: '1.25rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 5,
-        }}
-      >
-        {/* 2D / 3D Toggle */}
-        <div
-          style={{
-            display: 'flex',
-            background: 'rgba(17, 24, 39, 0.9)',
-            border: '1px solid var(--border)',
-            borderRadius: '0.625rem',
-            padding: '3px',
-            backdropFilter: 'blur(12px)',
-            gap: '2px',
-          }}
-        >
-          {['2D', '3D'].map((mode) => (
-            <motion.button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.4rem 0.875rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: '0.05em',
-                transition: 'all 0.2s ease',
-                background: viewMode === mode
-                  ? 'linear-gradient(135deg, #1d4ed8, #2563eb)'
-                  : 'transparent',
-                color: viewMode === mode ? 'white' : 'var(--text-muted)',
-                boxShadow: viewMode === mode
-                  ? '0 2px 8px rgba(59, 130, 246, 0.35)'
-                  : 'none',
-              }}
-            >
-              {mode === '2D' ? <Map size={13} /> : <Box size={13} />}
-              {mode === '2D' ? '2D Map' : '3D Digital Twin'}
-            </motion.button>
-          ))}
-        </div>
+    <points ref={pointsRef} position={[0, -0.5, -8]} rotation={[-Math.PI / 2, 0, 0]}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={particleCount}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial color="#3b82f6" size={0.15} transparent opacity={0.8} />
+    </points>
+  );
+}
 
-        {/* Right controls */}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {[
-            { icon: Layers, label: 'Layers' },
-            { icon: Navigation2, label: 'Recenter' },
-            { icon: Maximize2, label: 'Fullscreen' },
-          ].map(({ icon: Icon, label }) => (
-            <motion.button
-              key={label}
-              title={label}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                width: '36px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(17, 24, 39, 0.9)',
-                border: '1px solid var(--border)',
-                borderRadius: '0.5rem',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                backdropFilter: 'blur(12px)',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <Icon size={15} />
-            </motion.button>
-          ))}
-        </div>
+// ─── Main Map Component ─────────────────────────────────────
+export default function MapContainer() {
+  const [is3D, setIs3D] = useState(false);
+
+  return (
+    <div className="relative w-full h-full bg-[#0a0f1e] overflow-hidden">
+      
+      {/* ── Toggle UI ── */}
+      <div className="absolute top-5 left-5 z-20 flex bg-[#111827]/80 backdrop-blur-md border border-slate-700/50 rounded-lg p-1 shadow-xl">
+        <button
+          onClick={() => setIs3D(false)}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-md transition-all ${
+            !is3D ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <MapIcon size={14} /> 2D Map
+        </button>
+        <button
+          onClick={() => setIs3D(true)}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-md transition-all ${
+            is3D ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Box size={14} /> 3D Digital Twin
+        </button>
       </div>
 
-      {/* Main Canvas Area — dark placeholder for Three.js / MapLibre */}
-      <div
-        style={{
-          flex: 1,
-          position: 'relative',
-          background: 'radial-gradient(ellipse at 40% 60%, #0d1829 0%, #0a0f1e 70%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-        }}
-        id="map-canvas-root"
-        aria-label="Map visualization canvas — Three.js / MapLibre will render here"
-      >
-        {/* Grid overlay for visual depth */}
-        <svg
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            opacity: 0.04,
-            pointerEvents: 'none',
-          }}
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
-              <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-
-        {/* Subtle topographic rings — decorative depth hint */}
-        {[280, 220, 160, 100].map((size, i) => (
-          <motion.div
-            key={size}
-            animate={{
-              scale: [1, 1.015, 1],
-              opacity: [0.04, 0.08, 0.04],
+      {/* ── 2D Map State (Real Interactive MapLibre) ── */}
+      {!is3D && (
+        <div className="absolute inset-0 z-10">
+          <MapGL
+            initialViewState={{
+              longitude: 84.4833, // Real coordinates for Thulagi region
+              latitude: 28.5333,
+              zoom: 11,
+              pitch: 45 // Adds a slight dramatic tilt
             }}
-            transition={{
-              duration: 4 + i * 0.8,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: i * 0.5,
-            }}
-            style={{
-              position: 'absolute',
-              width: `${size}px`,
-              height: `${size}px`,
-              borderRadius: '50%',
-              border: `1px solid rgba(59, 130, 246, 0.3)`,
-              pointerEvents: 'none',
-            }}
-          />
-        ))}
-
-        {/* Lake location marker */}
-        <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.5, type: 'spring' }}
-          style={{ position: 'relative', zIndex: 2 }}
-        >
-          {/* Pulse ring */}
-          <motion.div
-            animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
-            style={{
-              position: 'absolute',
-              inset: '-12px',
-              borderRadius: '50%',
-              border: '2px solid rgba(239, 68, 68, 0.6)',
-            }}
-          />
-
-          {/* Center dot */}
-          <div
-            style={{
-              width: '14px',
-              height: '14px',
-              borderRadius: '50%',
-              background: 'var(--accent-red)',
-              boxShadow: '0 0 20px var(--accent-red-glow), 0 0 40px rgba(239,68,68,0.2)',
-              border: '2px solid white',
-            }}
-          />
-        </motion.div>
-
-        {/* Canvas placeholder label */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={viewMode}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3 }}
-            style={{
-              position: 'absolute',
-              bottom: '1.5rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.5rem',
-              pointerEvents: 'none',
-            }}
+            mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+            interactive={true}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: 'rgba(17, 24, 39, 0.85)',
-                border: '1px solid var(--border)',
-                borderRadius: '0.5rem',
-                padding: '0.5rem 1rem',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              {viewMode === '2D' ? <Map size={14} color="var(--accent-blue)" /> : <Box size={14} color="var(--accent-blue)" />}
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                {viewMode === '2D'
-                  ? 'MapLibre GL canvas — Phase 3'
-                  : 'Three.js 3D Digital Twin — Phase 3'}
-              </span>
-            </div>
-
-            {/* Lake coordinate tag */}
-            <div
-              style={{
-                fontSize: '0.65rem',
-                color: 'var(--text-muted)',
-                fontFamily: 'monospace',
-                letterSpacing: '0.05em',
-              }}
-            >
-              28.5333°N · 84.3833°E · THULAGI
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* View mode badge top-center */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '4.5rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontSize: '0.6rem',
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'rgba(59, 130, 246, 0.4)',
-            pointerEvents: 'none',
-          }}
-        >
-          {viewMode === '2D' ? '— Sentinel-2 L2A Mosaic —' : '— SRTM 30m Elevation Model —'}
+            {/* The pulsing red lake marker */}
+            <Marker longitude={84.4833} latitude={28.5333} anchor="center">
+              <div className="relative flex flex-col items-center">
+                <motion.div 
+                  animate={{ scale: [1, 2.5, 1], opacity: [0.6, 0, 0.6] }} 
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }} 
+                  className="absolute w-8 h-8 border border-red-500 rounded-full" 
+                />
+                <div className="w-3 h-3 bg-red-500 rounded-full shadow-[0_0_20px_rgba(239,68,68,1)]" />
+                <div className="mt-4 text-[10px] text-slate-200 font-bold tracking-widest uppercase bg-[#0a0f1e]/90 px-2 py-1 rounded border border-slate-700 backdrop-blur-sm pointer-events-none">
+                  Thulagi Lake
+                </div>
+              </div>
+            </Marker>
+          </MapGL>
         </div>
-      </div>
-    </motion.div>
+      )}
+
+      {/* ── 3D Map State (React Three Fiber) ── */}
+      {is3D && (
+        <div className="absolute inset-0 cursor-move z-10">
+          {/* FIX: Suspense prevents Vite from crashing during async WebGL load */}
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center w-full h-full text-slate-400">
+              <AlertTriangle className="animate-pulse mb-4 text-yellow-500" size={32} />
+              <p className="text-sm uppercase tracking-widest">Loading Spatial Geometry...</p>
+            </div>
+          }>
+            <Canvas camera={{ position: [0, 8, 12], fov: 45 }}>
+              <ambientLight intensity={0.4} />
+              <OrbitControls 
+                enableZoom={true} 
+                maxPolarAngle={Math.PI / 2.1} 
+                minDistance={5} 
+                maxDistance={30} 
+              />
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]}>
+                <planeGeometry args={[80, 80, 32, 32]} />
+                <meshBasicMaterial color="#334155" wireframe transparent opacity={0.3} />
+              </mesh>
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.9, -8]}>
+                <circleGeometry args={[2.5, 32]} />
+                <meshBasicMaterial color="#1d4ed8" />
+              </mesh>
+              <FloodParticles />
+            </Canvas>
+          </Suspense>
+          <div className="absolute bottom-5 right-5 text-[10px] text-slate-500 tracking-wider">
+            Click & Drag to Rotate
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
