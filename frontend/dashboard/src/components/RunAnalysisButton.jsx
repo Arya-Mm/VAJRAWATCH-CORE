@@ -1,23 +1,27 @@
-/* ─────────────────────────────────────────────────────
- * RunAnalysisButton
- * Full-width CTA with shimmer scan animation,
- * pulsing indicator dot, and tier-aware styling.
- * ───────────────────────────────────────────────────── */
+/**
+ * RunAnalysisButton — Phase 2
+ * Reads runAnalysis action + analysisState from useLakeStore.
+ * Disabled + label change during loading.
+ */
 
-function RunAnalysisButton({ tier = 'RED' }) {
+import useLakeStore from '../store/useLakeStore';
+
+function RunAnalysisButton() {
+  const runAnalysis   = useLakeStore(s => s.runAnalysis);
+  const analysisState = useLakeStore(s => s.analysisState);
+  const isLoading     = analysisState === 'loading';
+
   return (
     <button
-      className={`run-analysis-btn run-analysis-btn--${tier.toLowerCase()}`}
-      aria-label="Run VAJRAWATCH analysis"
+      className={`run-analysis-btn${isLoading ? ' run-analysis-btn--loading' : ''}`}
+      onClick={runAnalysis}
+      disabled={isLoading}
+      aria-label="Run VAJRAWATCH glacial risk analysis"
+      aria-busy={isLoading}
     >
-      {/* Pulsing dot — left edge */}
-      <span className="run-analysis-btn__pulse" aria-hidden="true" />
-
-      {/* Label + engine tag */}
-      <div className="run-analysis-btn__body">
-        <span className="run-analysis-btn__label">RUN ANALYSIS</span>
-        <span className="run-analysis-btn__sub">VAJRAWATCH ENGINE v2.1</span>
-      </div>
+      <span className="run-analysis-btn__label">
+        {isLoading ? 'Analyzing…' : 'Run Analysis'}
+      </span>
     </button>
   );
 }

@@ -1,104 +1,117 @@
-/* ─────────────────────────────────────────────────────
- * Overview
- * Command-center shell: sticky header, sub-bar,
- * CSS Grid layout wiring all four panel components.
- * ───────────────────────────────────────────────────── */
+/**
+ * Overview — Phase 4
+ * Adds:
+ *   - AlertBanner inside AnimatePresence (shown when critical)
+ *   - DemoMode button in header
+ *   - LIVE pulse dot in header
+ *   - ErrorBoundary wrapping each intel section
+ *   - is-critical class on hero-panel for glow CSS
+ */
 
-import RiskGauge        from '../components/RiskGauge';
-import TopDrivers       from '../components/TopDrivers';
-import ImpactPanel      from '../components/ImpactPanel';
-import RunAnalysisButton from '../components/RunAnalysisButton';
-import { thulagiData }  from '../data/thulagiMock';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import useLakeStore         from '../store/useLakeStore';
+import ThreatMonitoringZone from '../components/ThreatMonitoringZone';
+import AnalysisTimeline     from '../components/AnalysisTimeline';
+import AgentActivityPanel   from '../components/AgentActivityPanel';
+import RiskGauge            from '../components/RiskGauge';
+import TopDrivers           from '../components/TopDrivers';
+import ImpactPanel          from '../components/ImpactPanel';
+import RunAnalysisButton    from '../components/RunAnalysisButton';
+import AlertBanner          from '../components/AlertBanner';
+import DemoMode             from '../components/DemoMode';
+import ErrorBoundary        from '../components/ErrorBoundary';
 
 function Overview() {
-  const { lakeId, name, riskScore, riskTier, topDrivers, impact } = thulagiData;
-  const tierLower = riskTier.toLowerCase();
+  const riskScore     = useLakeStore(s => s.riskScore);
+  const riskTier      = useLakeStore(s => s.riskTier);
+  const topDrivers    = useLakeStore(s => s.topDrivers);
+  const impactData    = useLakeStore(s => s.impactData);
+  const analysisState = useLakeStore(s => s.analysisState);
+
+  const isLoading  = analysisState === 'loading';
+  const isCritical = analysisState === 'critical';
 
   return (
-    <div className="command-center">
+    <div className="dashboard">
 
-      {/* ── Sticky header ─────────────────────────────── */}
-      <header className="cc-header">
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <header className="dashboard-header">
 
-        {/* Brand */}
-        <div className="cc-brand">
-          <div className="cc-brand__icon" aria-hidden="true">⚡</div>
-          <span className="cc-brand__name">VAJRAWATCH</span>
-          <span className="cc-brand__tag">CORE v1</span>
+        {/* Brand — live dot + wordmark */}
+        <div className="header-brand">
+          <motion.span
+            className="header-live-dot"
+            animate={{ opacity: [1, 0.15, 1] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            aria-label="Live monitoring active"
+          />
+          <span className="wordmark">VAJRAWATCH</span>
         </div>
 
-        {/* Lake metadata */}
-        <div className="cc-meta">
-          <span className="cc-meta__id">{lakeId}</span>
-          <span className="cc-meta__name">{name}</span>
-          <span className="cc-meta__sep" aria-hidden="true" />
-          <span className="cc-meta__coords">28.5143°N · 84.4231°E</span>
-        </div>
+        <span className="header-subtitle">GLOF Command Center</span>
 
-        {/* System status + alert */}
-        <div className="cc-header__right">
-          <div className="cc-status" aria-label="System status: active">
-            <span className="cc-status__dot" aria-hidden="true" />
-            SYSTEM ACTIVE
-          </div>
-          <div
-            className={`cc-alert cc-alert--${tierLower}`}
-            role="status"
-            aria-label={`Risk alert level: ${riskTier}`}
-          >
-            <span className="cc-alert__dot" aria-hidden="true" />
-            {riskTier} ALERT
+        {/* Controls — Demo mode + lakes stat */}
+        <div className="header-controls">
+          <DemoMode />
+          <div className="header-stat">
+            <span className="header-stat__value">47</span>
+            <span className="header-stat__label">Lakes Monitored</span>
           </div>
         </div>
 
       </header>
 
-      {/* ── Sub-bar ───────────────────────────────────── */}
-      <div className="cc-subbar" aria-label="Lake metadata">
-        <div className="cc-subbar__item">
-          ELEVATION <strong>4,149m ASL</strong>
+      {/* ── Alert Banner — Peak-End Rule ───────────────────────── */}
+      <AnimatePresence>
+        {isCritical && <AlertBanner key="alert-banner" />}
+      </AnimatePresence>
+
+      {/* ── Body — 3-column mission control ───────────────────── */}
+      <div className="dashboard-body">
+
+        {/* Sidebar — Analysis Timeline + Agent Activity */}
+        <div className="sidebar-panel">
+          <AnalysisTimeline />
+          <div className="sidebar-divider" aria-hidden="true" />
+          <AgentActivityPanel />
         </div>
-        <div className="cc-subbar__sep" aria-hidden="true" />
-        <div className="cc-subbar__item">
-          BASIN <strong>Marsyangdi River</strong>
+
+        {/* Hero — ThreatMonitoringZone */}
+        <div className={`hero-panel${isCritical ? ' is-critical' : ''}`}>
+          <ThreatMonitoringZone />
         </div>
-        <div className="cc-subbar__sep" aria-hidden="true" />
-        <div className="cc-subbar__item">
-          LAST SCAN <strong>2026-06-12 15:00 UTC</strong>
+
+        {/* Intel — Risk Gauge · Top Drivers · Impact Severity */}
+        <div className="intel-panel">
+
+          <div className="intel-section">
+            <ErrorBoundary>
+              <RiskGauge score={riskScore} tier={riskTier} isLoading={isLoading} />
+            </ErrorBoundary>
+          </div>
+
+          <div className="intel-section">
+            <ErrorBoundary>
+              <TopDrivers drivers={topDrivers} isLoading={isLoading} />
+            </ErrorBoundary>
+          </div>
+
+          <div className="intel-section">
+            <ErrorBoundary>
+              <ImpactPanel impact={impactData} isLoading={isLoading} />
+            </ErrorBoundary>
+          </div>
+
         </div>
-        <div className="cc-subbar__sep" aria-hidden="true" />
-        <div className="cc-subbar__item">
-          DATA SOURCE <strong>SAR + OPTICAL FUSION</strong>
-        </div>
+
       </div>
 
-      {/* ── Main CSS Grid ─────────────────────────────── */}
-      <main className="cc-grid">
+      {/* ── Footer — Run Analysis ──────────────────────────────── */}
+      <div className="run-analysis-footer">
+        <RunAnalysisButton />
+      </div>
 
-        {/* Left column — Risk Gauge */}
-        <section className="cc-card cc-card--gauge" aria-label="Risk gauge">
-          <RiskGauge score={riskScore} tier={riskTier} />
-        </section>
-
-        {/* Right column — stacked panels */}
-        <div className="cc-right-panel">
-
-          <section className="cc-card" aria-label="Top risk drivers">
-            <TopDrivers drivers={topDrivers} />
-          </section>
-
-          <section className="cc-card" aria-label="Impact assessment">
-            <ImpactPanel impact={impact} />
-          </section>
-
-        </div>
-
-        {/* Footer row — Run Analysis */}
-        <div className="cc-card cc-card--footer">
-          <RunAnalysisButton tier={riskTier} />
-        </div>
-
-      </main>
     </div>
   );
 }
