@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Header from './components/Header';
 import MapContainer from './components/MapContainer';
 import Sidebar from './components/Sidebar';
@@ -15,6 +16,8 @@ import Sidebar from './components/Sidebar';
  *   └──────────────────────────────┴───────────────┘
  */
 export default function App() {
+  const [activeLakeId, setActiveLakeId] = useState("PDGL_THULAGI_01");
+
   return (
     <div
       style={{
@@ -39,10 +42,10 @@ export default function App() {
         }}
       >
         {/* Left 60% — visual map canvas */}
-        <MapContainer />
+        <MapContainer activeLakeId={activeLakeId} setActiveLakeId={setActiveLakeId} />
 
         {/* Right 40% — data sidebar & action panel */}
-        <Sidebar />
+        <Sidebar activeLakeId={activeLakeId} setActiveLakeId={setActiveLakeId} />
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,7 +18,7 @@ import {
   Waves,
 } from 'lucide-react';
 import RiskGauge from './RiskGauge'; 
-import { THULAGI_LAKE_DATA } from '../data/mockData';
+import { MOCK_LAKES } from '../data/mockData';
 
 const SIMULATED_LOADING_MS = 1500; // Strict 1.5s requirement from Master Prompt
 
@@ -61,16 +61,18 @@ function LoadingState() {
 }
 
 function CriticalAlertBanner({ data }) {
+  // Defensive check: if risk_score is lower than critical threshold, we can adjust styling,
+  // but for the sake of the Anticipation Loop demo, hitting "RUN ANALYSIS" forces the critical state.
   return (
-    <div className="mb-1 p-4 rounded-lg bg-red-500/10 border border-red-500/50">
+    <div className={`mb-1 p-4 rounded-lg border ${data.risk_tier === 'RED' ? 'bg-red-500/10 border-red-500/50' : 'bg-orange-500/10 border-orange-500/50'}`}>
       <div className="flex items-start gap-3">
-        <AlertTriangle size={18} className="text-red-500" />
+        <AlertTriangle size={18} className={data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'} />
         <div className="flex-1">
-          <div className="text-[12px] font-extrabold text-red-500 tracking-widest uppercase mb-1">
-            ⚠ GLOF RISK CRITICAL — IMMEDIATE ACTION REQUIRED
+          <div className={`text-[12px] font-extrabold tracking-widest uppercase mb-1 ${data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'}`}>
+            ⚠ GLOF RISK {data.risk_tier} — IMMEDIATE ACTION REQUIRED
           </div>
           <div className="text-[11.5px] text-slate-200/75 leading-relaxed">
-            LangGraph agent analysis complete. Risk score <strong className="text-red-500">{data.risk_score}/100</strong>.
+            LangGraph agent analysis complete. Risk score <strong className={data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'}>{data.risk_score}/100</strong>.
             Estimated flood front ETA: <strong className="text-[#f8fafc]">~4 hours</strong>.
             Population at risk: <strong className="text-[#f8fafc]">{data.impact.population.toLocaleString()} people</strong>.
           </div>
@@ -95,15 +97,25 @@ function AgentTrace({ trace, index }) {
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ activeLakeId, setActiveLakeId }) {
   const [analysisState, setAnalysisState] = useState('idle');
-  const [liveData, setLiveData] = useState(THULAGI_LAKE_DATA);
+  const [liveData, setLiveData] = useState(MOCK_LAKES[activeLakeId]);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const audioRef = useRef(null);
 
+  // When active lake changes from the map or dropdown, reset sidebar state
+  useEffect(() => {
+    setAnalysisState('idle');
+    setLiveData(MOCK_LAKES[activeLakeId]);
+    if (audioPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setAudioPlaying(false);
+    }
+  }, [activeLakeId]);
+
   const isLoading = analysisState === 'loading';
   const isCritical = analysisState === 'critical';
-  const data = liveData;
+  const data = liveData || MOCK_LAKES["PDGL_THULAGI_01"];
 
   const handlePlayWarning = useCallback(() => {
     if (audioRef.current && audioPlaying) {
@@ -127,12 +139,12 @@ export default function Sidebar() {
     const startTime = Date.now();
     
     try {
-      // API Fallback Rule: Fetch actual data, fallback to mock JSON if offline
-      const response = await axios.get('http://localhost:8000/risk/thulagi');
+      // Phase 5: Fetch specific lake
+      const response = await axios.get(`http://localhost:8000/risk/${activeLakeId}`);
       setLiveData(response.data);
     } catch (error) {
-      console.warn("Backend offline, silent fallback to mock data");
-      setLiveData(THULAGI_LAKE_DATA);
+      console.warn(`Backend offline, silent fallback to mock data for ${activeLakeId}`);
+      setLiveData(MOCK_LAKES[activeLakeId]);
     } finally {
       // Anticipation Loop: Force minimum SIMULATED_LOADING_MS duration
       const elapsed = Date.now() - startTime;
@@ -142,7 +154,7 @@ export default function Sidebar() {
       }
       setAnalysisState('critical');
     }
-  }, [isLoading]);
+  }, [isLoading, activeLakeId]);
 
   return (
     <aside
@@ -157,22 +169,36 @@ export default function Sidebar() {
             <div className="flex items-center gap-1.5 mb-1">
               <MapPin size={13} className="text-blue-500" />
               <span className="text-[10.5px] font-semibold text-slate-400 tracking-widest uppercase">
-                Selected Lake
+                Selected Target
               </span>
             </div>
-            <h1 className="text-lg font-extrabold text-[#f8fafc] tracking-tight leading-tight">
-              {data.name}
-            </h1>
+            
+            {/* Phase 5 Invisible Dropdown */}
+            <select
+              value={activeLakeId}
+              onChange={(e) => setActiveLakeId(e.target.value)}
+              className="text-3xl font-extrabold text-[#f8fafc] tracking-tight leading-tight appearance-none bg-transparent border-none p-0 outline-none cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+              style={{ paddingRight: '1rem' }} // Add a little space for the invisible hit area
+            >
+              {Object.values(MOCK_LAKES).map(lake => (
+                <option key={lake.lake_id} value={lake.lake_id} className="bg-[#111827] text-[#f8fafc]">
+                  {lake.name}
+                </option>
+              ))}
+            </select>
+
             <div className="text-[10.5px] font-mono text-slate-400 mt-1">
               {data.lake_id}
             </div>
           </div>
           <div
             className={`px-3 py-1.5 rounded-full border text-[10.5px] font-extrabold tracking-widest uppercase shrink-0 transition-none ${
-              isCritical ? 'bg-red-500/15 border-red-500/50 text-red-500' : 'bg-slate-500/15 border-[#334155] text-slate-400'
+              isCritical && data.risk_tier === 'RED' ? 'bg-red-500/15 border-red-500/50 text-red-500' 
+              : isCritical && data.risk_tier === 'AMBER' ? 'bg-orange-500/15 border-orange-500/50 text-orange-500'
+              : 'bg-slate-500/15 border-[#334155] text-slate-400'
             }`}
           >
-            {isCritical ? '● CRITICAL' : data.risk_tier}
+            {isCritical ? `● ${data.risk_tier}` : 'STANDBY'}
           </div>
         </div>
 
@@ -181,7 +207,7 @@ export default function Sidebar() {
             <LoadingState key="loading" />
           ) : (
             <motion.div
-              key={`data-${analysisState}`}
+              key={`data-${analysisState}-${activeLakeId}`}
               initial={isCritical ? { opacity: 0 } : false}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2 }}
@@ -219,19 +245,19 @@ export default function Sidebar() {
                     return (
                       <div
                         key={`${driver.feature}-${i}`}
-                        className={`flex items-center justify-between p-2 rounded ${isHighlighted ? 'bg-red-500/5 border border-red-500/20' : ''}`}
+                        className={`flex items-center justify-between p-2 rounded ${isHighlighted ? (data.risk_tier === 'RED' ? 'bg-red-500/5 border border-red-500/20' : 'bg-orange-500/5 border border-orange-500/20') : ''}`}
                       >
                         <div className="flex items-center gap-2">
-                          {isHighlighted ? <Waves size={13} className="text-red-500" /> : <TrendingUp size={13} className="text-slate-400" />}
+                          {isHighlighted ? <Waves size={13} className={data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500'} /> : <TrendingUp size={13} className="text-slate-400" />}
                           <span className={`text-[12.5px] font-semibold ${isHighlighted ? 'text-[#f8fafc]' : 'text-slate-300'}`}>
                             {driver.feature}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm font-extrabold tracking-tight ${isHighlighted ? 'text-red-500' : 'text-[#f8fafc]'}`}>
+                          <span className={`text-sm font-extrabold tracking-tight ${isHighlighted ? (data.risk_tier === 'RED' ? 'text-red-500' : 'text-orange-500') : 'text-[#f8fafc]'}`}>
                             {driver.value}
                           </span>
-                          <span className={`text-[10.5px] font-bold px-1.5 py-[1px] rounded tracking-wide ${isHighlighted ? 'text-red-500/70 bg-red-500/10' : 'text-slate-400 bg-[#0f172a]'}`}>
+                          <span className={`text-[10.5px] font-bold px-1.5 py-[1px] rounded tracking-wide ${isHighlighted ? (data.risk_tier === 'RED' ? 'text-red-500/70 bg-red-500/10' : 'text-orange-500/70 bg-orange-500/10') : 'text-slate-400 bg-[#0f172a]'}`}>
                             {driver.anomaly_ratio}
                           </span>
                         </div>
@@ -320,12 +346,12 @@ export default function Sidebar() {
           }`}
           style={{
             background: isCritical
-              ? '#dc2626'
+              ? (data.risk_tier === 'RED' ? '#dc2626' : data.risk_tier === 'AMBER' ? '#f59e0b' : '#10b981')
               : isLoading
               ? '#1e3a8a'
               : '#2563eb',
             boxShadow: isCritical
-              ? '0 4px 24px rgba(220,38,38,0.4)'
+              ? (data.risk_tier === 'RED' ? '0 4px 24px rgba(220,38,38,0.4)' : '0 4px 24px rgba(245,158,11,0.4)')
               : '0 4px 24px rgba(37,99,235,0.3)',
           }}
         >
