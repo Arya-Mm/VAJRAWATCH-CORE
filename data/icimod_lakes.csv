@@ -1,0 +1,5 @@
+lake_id,name,lat,lon,area_km2,max_depth_m,elevation_m,risk_tier,moraine_type
+LAKE-THULAGI-001,Thulagi,28.533,84.483,1.2,80,4100,HIGH,Ice-cored
+LAKE-IMJA-002,Imja,27.892,86.923,1.5,90,5010,HIGH,Ice-cored
+LAKE-LOWER-BARUN-003,Lower Barun,27.795,87.091,1.8,110,4570,HIGH,Ice-cored
+LAKE-TSHO-ROLA-004,Tsho Rola,27.9,86.5,0.9,45,4600,MEDIUM,Rock

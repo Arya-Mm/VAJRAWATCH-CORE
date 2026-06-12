@@ -1,0 +1,21 @@
+{
+  "lake_id": "LAKE-THULAGI-001",
+  "name": "Thulagi",
+  "lat": 28.5,
+  "lon": 84.5,
+  "timestamp": "2026-06-12T12:00:00Z",
+  "features": {
+    "ndwi_delta_30d": 12.5,
+    "sar_backscatter_change": 4.2,
+    "precip_7d_mm": 145.0,
+    "temp_anomaly_c": 2.8,
+    "seismic_count_14d": 3,
+    "seismic_max_magnitude": 4.1,
+    "nvidia_precip_5day_mm": 210.0,
+    "lake_area_km2": 1.2
+  },
+  "metadata": {
+    "risk_tier_simulated": "RED",
+    "risk_score_simulated": 84
+  }
+}
