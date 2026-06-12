@@ -1,10 +1,53 @@
 version: "3.9"
+
 services:
+  db:
+    image: postgis/postgis:15-3.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: vajrawatch
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+    restart: unless-stopped
+
   backend:
     build: 
       context: .
       dockerfile: backend/Dockerfile
     ports: ["8000:8000"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@db:5432/vajrawatch
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      - db
+      - redis
+      - ollama
     volumes: 
       - .:/app
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
+  redisdata:
+  ollamadata:
+
