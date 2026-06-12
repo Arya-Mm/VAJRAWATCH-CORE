@@ -152,10 +152,13 @@ function RiskGauge({ score, tier, isLoading }) {
   /* Count-up: fires when isLoading transitions false */
   useEffect(() => {
     cancelAnimationFrame(rafRef.current);
+    let timerId = null;
 
     if (isLoading) {
-      setDisplayScore(0);
-      return;
+      timerId = setTimeout(() => setDisplayScore(0), 0);
+      return () => {
+        if (timerId) clearTimeout(timerId);
+      };
     }
 
     const duration  = 800; // ms

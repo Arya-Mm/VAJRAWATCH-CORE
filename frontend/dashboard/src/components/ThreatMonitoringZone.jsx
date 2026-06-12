@@ -1,21 +1,29 @@
 /**
- * ThreatMonitoringZone — Phase 3 + Hardening
+ * ThreatMonitoringZone — Phase 5
+ * Replaces the static terrain frame with the interactive MapLibre GL JS engine.
  * Coordinates read from selectedLake.coordinates (no hardcoding).
- * riskScore clamped to [0, 100] before use in progress bar.
- * aria-labels added to all status indicators.
+ * Adds mobile collapsible state with expand/collapse toggle.
  */
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import useLakeStore from '../store/useLakeStore';
 import AlertStatus from './AlertStatus';
-
-const CONTOUR_SIZES = [88, 68, 50, 32, 16];
+import MapContainer from './map/MapContainer';
+import LakeMarker from './map/LakeMarker';
+import RiskRadius from './map/RiskRadius';
+import ImpactRadius from './map/ImpactRadius';
+import MapControls from './map/MapControls';
+import DigitalTwin from './digitalTwin/DigitalTwin';
 
 function ThreatMonitoringZone() {
   const selectedLake  = useLakeStore(s => s.selectedLake);
   const riskScore     = useLakeStore(s => s.riskScore);
   const riskTier      = useLakeStore(s => s.riskTier);
   const analysisState = useLakeStore(s => s.analysisState);
+  const viewMode      = useLakeStore(s => s.viewMode);
+
+  const [isMapCollapsed, setIsMapCollapsed] = useState(false);
 
   /* Clamp score — prevents bar overflow on bad data */
   const safeScore = Math.min(Math.max(riskScore, 0), 100);
@@ -24,8 +32,8 @@ function ThreatMonitoringZone() {
   const isScanning = analysisState === 'loading';
 
   /* Coordinates from data layer — no hardcoding */
-  const { lat, lng, elevation } = selectedLake.coordinates ?? {
-    lat: 'N/A', lng: 'N/A', elevation: 'N/A',
+  const { lat, lng } = selectedLake.coordinates ?? {
+    lat: 'N/A', lng: 'N/A',
   };
 
   return (
@@ -34,20 +42,33 @@ function ThreatMonitoringZone() {
       {/* ── Top bar ───────────────────────────────── */}
       <div className="tmz-topbar">
         <span className="tmz-topbar__title">Threat Monitoring Zone</span>
-        <div
-          className="tmz-topbar__status"
-          role="status"
-          aria-label={isScanning ? 'Status: Scanning' : 'Status: Active monitoring'}
-        >
-          <motion.span
-            className="tmz-status-dot"
-            animate={{ opacity: [1, 0.25, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            aria-hidden="true"
-          />
-          <span className="tmz-status-label">
-            {isScanning ? 'SCANNING' : 'ACTIVE'}
-          </span>
+        <div className="tmz-topbar__controls">
+          {/* Collapse button — only visible on mobile/tablet via CSS */}
+          <button
+            type="button"
+            className="tmz-collapse-btn"
+            onClick={() => setIsMapCollapsed(!isMapCollapsed)}
+            aria-label={isMapCollapsed ? 'Expand Map' : 'Collapse Map'}
+            aria-expanded={!isMapCollapsed}
+          >
+            {isMapCollapsed ? '▼ EXPAND MAP' : '▲ COLLAPSE MAP'}
+          </button>
+
+          <div
+            className="tmz-topbar__status"
+            role="status"
+            aria-label={isScanning ? 'Status: Scanning' : 'Status: Active monitoring'}
+          >
+            <motion.span
+              className="tmz-status-dot"
+              animate={{ opacity: [1, 0.25, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              aria-hidden="true"
+            />
+            <span className="tmz-status-label">
+              {isScanning ? 'SCANNING' : 'ACTIVE'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -73,49 +94,22 @@ function ThreatMonitoringZone() {
         <AlertStatus />
       </div>
 
-      {/* ── Terrain frame ─────────────────────────── */}
+      {/* ── Map/Digital Twin Frame (Interactive GIS/3D) ──── */}
       <div
-        className="tmz-frame"
-        role="img"
-        aria-label={`Simulated terrain view of ${selectedLake.name} with radar sweep`}
+        className={`tmz-frame ${isMapCollapsed ? 'is-collapsed' : ''}`}
+        role="region"
+        aria-label={viewMode === '2d' ? `Geospatial map of ${selectedLake.name}` : `3D Digital Twin of ${selectedLake.name}`}
       >
-        <div className="tmz-grid" aria-hidden="true" />
-
-        {CONTOUR_SIZES.map((size, i) => (
-          <div
-            key={i}
-            className="tmz-contour"
-            aria-hidden="true"
-            style={{ width: `${size}%`, height: `${size * 0.65}%` }}
-          />
-        ))}
-
-        <div className="tmz-radar" aria-hidden="true">
-          <motion.div
-            className="tmz-radar-sweep"
-            animate={{ rotate: [0, 360] }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-            style={{ transformOrigin: 'center center' }}
-          >
-            <div className="tmz-radar-arm" />
-          </motion.div>
-        </div>
-
-        <motion.div
-          className="tmz-scan-line"
-          aria-hidden="true"
-          animate={{ top: ['0%', '100%'] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-        />
-
-        <div className="tmz-crosshair" aria-hidden="true" />
-
-        <div className="tmz-frame-labels" aria-hidden="true">
-          <span className="tmz-frame-labels__name">
-            {selectedLake.name.toUpperCase()}
-          </span>
-          <span className="tmz-frame-labels__elv">ELV {elevation}</span>
-        </div>
+        {viewMode === '2d' ? (
+          <MapContainer>
+            <LakeMarker />
+            <RiskRadius />
+            <ImpactRadius />
+            <MapControls />
+          </MapContainer>
+        ) : (
+          <DigitalTwin />
+        )}
       </div>
 
       {/* ── Risk tier status bar ───────────────────── */}
@@ -143,3 +137,4 @@ function ThreatMonitoringZone() {
 }
 
 export default ThreatMonitoringZone;
+

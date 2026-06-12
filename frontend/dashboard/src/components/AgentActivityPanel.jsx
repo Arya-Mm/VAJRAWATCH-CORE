@@ -1,95 +1,54 @@
-/**
- * AgentActivityPanel — Phase 3 + Hardening
- * PERFORMANCE: removed 5 individual AnimatePresence instances.
- * Status labels now transition via CSS `transition: color 0.18s ease`.
- * Zero Framer Motion overhead — no 10 simultaneous VDOM animations.
- * Icon suffix provides non-colour redundancy for colour-blind users.
- */
-
 import useLakeStore from '../store/useLakeStore';
 
-const AGENTS = [
-  { id: 'sentinel', name: 'Sentinel Agent',     role: 'Anomaly detection'     },
-  { id: 'env',      name: 'Environmental Agent', role: 'Weather analysis'      },
-  { id: 'risk',     name: 'Risk Agent',          role: 'GLOF probability'      },
-  { id: 'skeptic',  name: 'Skeptic Agent',       role: 'False positive filter' },
-  { id: 'decision', name: 'Decision Agent',      role: 'Alert routing'         },
-];
+export default function AgentActivityPanel() {
+  const analysisState = useLakeStore((s) => s.analysisState);
+  const agentData = useLakeStore((s) => s.agentData);
 
-const STATE_STATUSES = {
-  idle:     ['MONITORING', 'MONITORING', 'STANDBY',    'STANDBY',    'STANDBY'   ],
-  loading:  ['SCANNING',   'ANALYZING',  'COMPUTING',  'VALIDATING', 'STANDBY'   ],
-  critical: ['CONFIRMED',  'ANOMALY',    'HIGH CONF',  'VALIDATED',  'ESCALATED' ],
-};
-
-const STATUS_CLS = {
-  MONITORING: 'green',
-  CONFIRMED:  'green',
-  VALIDATED:  'green',
-  SCANNING:   'yellow',
-  ANALYZING:  'yellow',
-  COMPUTING:  'yellow',
-  VALIDATING: 'yellow',
-  STANDBY:    'muted',
-  ANOMALY:    'red',
-  'HIGH CONF':'red',
-  ESCALATED:  'red',
-};
-
-/* Non-colour icon per semantic bucket */
-const STATUS_ICON = {
-  green:  '●',
-  yellow: '◐',
-  red:    '▲',
-  muted:  '○',
-};
-
-function AgentActivityPanel() {
-  const analysisState = useLakeStore(s => s.analysisState);
-  const statuses = STATE_STATUSES[analysisState] ?? STATE_STATUSES.idle;
+  const isIdle = analysisState === 'idle';
+  const isLoading = analysisState === 'loading';
 
   return (
-    <div className="agent-panel" role="list" aria-label="Intelligence agent status">
-      <p className="section-label">Agent Activity</p>
+    <div className="agent-panel" role="region" aria-label="LangGraph agent trace activity">
+      <p className="section-label">LangGraph Agent Activity Trace</p>
 
       <div className="agent-list">
-        {AGENTS.map((agent, i) => {
-          const status = statuses[i];
-          const cls    = STATUS_CLS[status] ?? 'muted';
-          const icon   = STATUS_ICON[cls]   ?? '○';
+        {/* Table Headers */}
+        <div className="trace-header-row">
+          <span className="trace-col-name">Agent</span>
+          <span className="trace-col-time">Time</span>
+          <span className="trace-col-decision">Decision / State</span>
+          <span className="trace-col-conf">Conf</span>
+        </div>
 
-          return (
-            <div
-              key={agent.id}
-              className="agent-item"
-              role="listitem"
-              aria-label={`${agent.name}: ${status}`}
-            >
-              {/* Colour dot — aria-hidden, icon handles non-colour signal */}
-              <div
-                className={`agent-item__dot agent-item__dot--${cls}`}
-                aria-hidden="true"
-              />
-              <div className="agent-item__info">
-                <span className="agent-item__name">{agent.name}</span>
-                <span className="agent-item__role">{agent.role}</span>
-              </div>
-              {/* CSS transition handles colour change — no AnimatePresence */}
-              <span
-                className={`agent-item__status agent-item__status--${cls}`}
-                aria-label={`Status: ${status}`}
-              >
-                <span className="agent-item__status-icon" aria-hidden="true">
-                  {icon}
-                </span>
-                {status}
-              </span>
+        {isIdle && (
+          <div className="trace-standby">
+            <span>Standby — Ready to capture execution trace</span>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="trace-scanning">
+            <span className="trace-scan-text">Executing LangGraph trace orchestrator...</span>
+          </div>
+        )}
+
+        {!isIdle && !isLoading && agentData.map((agent, i) => (
+          <div
+            key={i}
+            className="trace-item-row"
+            role="listitem"
+            aria-label={`${agent.name} executed in ${agent.execTime} with decision ${agent.decision} and ${agent.confidence} confidence`}
+          >
+            <div className="trace-col-name">
+              <span className="trace-dot active"></span>
+              {agent.name}
             </div>
-          );
-        })}
+            <span className="trace-col-time">{agent.execTime}</span>
+            <span className="trace-col-decision">{agent.decision}</span>
+            <span className="trace-col-conf badge-red">{agent.confidence}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
-
-export default AgentActivityPanel;

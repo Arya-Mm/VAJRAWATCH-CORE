@@ -21,6 +21,7 @@ import RunAnalysisButton    from '../components/RunAnalysisButton';
 import AlertBanner          from '../components/AlertBanner';
 import DemoMode             from '../components/DemoMode';
 import ErrorBoundary        from '../components/ErrorBoundary';
+import AlertConsole         from '../components/AlertConsole';
 
 function Overview() {
   const riskScore     = useLakeStore(s => s.riskScore);
@@ -77,9 +78,12 @@ function Overview() {
           <AgentActivityPanel />
         </div>
 
-        {/* Hero — ThreatMonitoringZone */}
-        <div className={`hero-panel${isCritical ? ' is-critical' : ''}`}>
-          <ThreatMonitoringZone />
+        {/* Hero — ThreatMonitoringZone + AlertConsole */}
+        <div className={`hero-panel${isCritical ? ' is-critical' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ThreatMonitoringZone />
+          </div>
+          <AlertConsole />
         </div>
 
         {/* Intel — Risk Gauge · Top Drivers · Impact Severity */}

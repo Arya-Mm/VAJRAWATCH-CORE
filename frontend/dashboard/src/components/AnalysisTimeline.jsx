@@ -40,14 +40,14 @@ function AnalysisTimeline() {
     const timers = [];
 
     if (analysisState === 'loading') {
-      setActiveStep(0);
+      timers.push(setTimeout(() => setActiveStep(0), 0));
       STEP_DELAYS.slice(1).forEach((delay, i) => {
         timers.push(setTimeout(() => setActiveStep(i + 1), delay));
       });
     } else if (analysisState === 'critical') {
-      setActiveStep(STEPS.length); // past last step → all complete
+      timers.push(setTimeout(() => setActiveStep(STEPS.length), 0));
     } else {
-      setActiveStep(-1);
+      timers.push(setTimeout(() => setActiveStep(-1), 0));
     }
 
     return () => timers.forEach(clearTimeout);
