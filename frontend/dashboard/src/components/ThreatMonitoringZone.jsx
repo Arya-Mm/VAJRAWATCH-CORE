@@ -1,8 +1,8 @@
 /**
- * ThreatMonitoringZone — Phase 3
- * Hero panel: lake info + AlertStatus + animated terrain frame.
- * Reads from useLakeStore — no props needed.
- * Framer Motion: radar sweep · scan line · status dot pulse.
+ * ThreatMonitoringZone — Phase 3 + Hardening
+ * Coordinates read from selectedLake.coordinates (no hardcoding).
+ * riskScore clamped to [0, 100] before use in progress bar.
+ * aria-labels added to all status indicators.
  */
 
 import { motion } from 'framer-motion';
@@ -17,8 +17,16 @@ function ThreatMonitoringZone() {
   const riskTier      = useLakeStore(s => s.riskTier);
   const analysisState = useLakeStore(s => s.analysisState);
 
+  /* Clamp score — prevents bar overflow on bad data */
+  const safeScore = Math.min(Math.max(riskScore, 0), 100);
+
   const tierLower  = riskTier.toLowerCase();
   const isScanning = analysisState === 'loading';
+
+  /* Coordinates from data layer — no hardcoding */
+  const { lat, lng, elevation } = selectedLake.coordinates ?? {
+    lat: 'N/A', lng: 'N/A', elevation: 'N/A',
+  };
 
   return (
     <div className="tmz">
@@ -26,7 +34,11 @@ function ThreatMonitoringZone() {
       {/* ── Top bar ───────────────────────────────── */}
       <div className="tmz-topbar">
         <span className="tmz-topbar__title">Threat Monitoring Zone</span>
-        <div className="tmz-topbar__status">
+        <div
+          className="tmz-topbar__status"
+          role="status"
+          aria-label={isScanning ? 'Status: Scanning' : 'Status: Active monitoring'}
+        >
           <motion.span
             className="tmz-status-dot"
             animate={{ opacity: [1, 0.25, 1] }}
@@ -46,10 +58,14 @@ function ThreatMonitoringZone() {
         <div className="tmz-lake-meta">
           <span>{selectedLake.lakeId}</span>
           <span className="meta-dot" aria-hidden="true">·</span>
-          <span>28.5143°N · 84.4231°E</span>
+          <span>{lat} · {lng}</span>
         </div>
 
-        <div className={`tier-status tier-status--${tierLower}`}>
+        <div
+          className={`tier-status tier-status--${tierLower}`}
+          role="status"
+          aria-label={`Risk tier: ${riskTier} — Critical Alert Active`}
+        >
           <span className="tier-status__dot" aria-hidden="true" />
           {riskTier} — Critical Alert Active
         </div>
@@ -58,12 +74,13 @@ function ThreatMonitoringZone() {
       </div>
 
       {/* ── Terrain frame ─────────────────────────── */}
-      <div className="tmz-frame" role="img" aria-label="Simulated terrain view with radar sweep">
-
-        {/* Grid overlay */}
+      <div
+        className="tmz-frame"
+        role="img"
+        aria-label={`Simulated terrain view of ${selectedLake.name} with radar sweep`}
+      >
         <div className="tmz-grid" aria-hidden="true" />
 
-        {/* Terrain contour rings */}
         {CONTOUR_SIZES.map((size, i) => (
           <div
             key={i}
@@ -73,7 +90,6 @@ function ThreatMonitoringZone() {
           />
         ))}
 
-        {/* Radar sweep container */}
         <div className="tmz-radar" aria-hidden="true">
           <motion.div
             className="tmz-radar-sweep"
@@ -85,7 +101,6 @@ function ThreatMonitoringZone() {
           </motion.div>
         </div>
 
-        {/* Scan line */}
         <motion.div
           className="tmz-scan-line"
           aria-hidden="true"
@@ -93,25 +108,33 @@ function ThreatMonitoringZone() {
           transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
         />
 
-        {/* Crosshair */}
         <div className="tmz-crosshair" aria-hidden="true" />
 
-        {/* Frame corner labels */}
         <div className="tmz-frame-labels" aria-hidden="true">
           <span className="tmz-frame-labels__name">
             {selectedLake.name.toUpperCase()}
           </span>
-          <span className="tmz-frame-labels__elv">ELV 4,149m</span>
+          <span className="tmz-frame-labels__elv">ELV {elevation}</span>
         </div>
       </div>
 
       {/* ── Risk tier status bar ───────────────────── */}
       <div className={`tmz-status-bar tmz-status-bar--${tierLower}`}>
         <span className="tmz-status-bar__label">RISK TIER</span>
-        <div className="tmz-status-bar__track" role="progressbar" aria-valuenow={riskScore} aria-valuemin={0} aria-valuemax={100}>
-          <div className="tmz-status-bar__fill" style={{ width: `${riskScore}%` }} />
+        <div
+          className="tmz-status-bar__track"
+          role="progressbar"
+          aria-valuenow={safeScore}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Risk score: ${safeScore} out of 100`}
+        >
+          <div
+            className="tmz-status-bar__fill"
+            style={{ width: `${safeScore}%` }}
+          />
         </div>
-        <span className="tmz-status-bar__score">{riskScore}/100</span>
+        <span className="tmz-status-bar__score">{safeScore}/100</span>
         <span className="tmz-status-bar__tier">{riskTier}</span>
       </div>
 
