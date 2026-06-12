@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import useLakeStore from '../../store/useLakeStore';
 
@@ -147,7 +147,19 @@ export default function TerrainMesh() {
     return tex;
   }, [colorCanvas]);
 
+  // Clean up displacement texture on update or unmount
+  useEffect(() => {
+    return () => {
+      dispTexture.dispose();
+    };
+  }, [dispTexture]);
 
+  // Clean up color texture on update or unmount
+  useEffect(() => {
+    return () => {
+      colorTexture.dispose();
+    };
+  }, [colorTexture]);
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.5, 0]}>

@@ -3,32 +3,23 @@
  * Replaces the static terrain frame with the interactive MapLibre GL JS engine.
  * Coordinates read from selectedLake.coordinates (no hardcoding).
  * Adds mobile collapsible state with expand/collapse toggle.
- */
-
-import { useState } from 'react';
+ */import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import useLakeStore from '../store/useLakeStore';
-import AlertStatus from './AlertStatus';
-import MapContainer from './map/MapContainer';
-import LakeMarker from './map/LakeMarker';
-import RiskRadius from './map/RiskRadius';
-import ImpactRadius from './map/ImpactRadius';
-import MapControls from './map/MapControls';
-import DigitalTwin from './digitalTwin/DigitalTwin';
 import LakeSelector from './LakeSelector';
-import FloodSimulation from './simulation/FloodSimulation';
+import RunAnalysisButton from './RunAnalysisButton';
+import DemoMode from './DemoMode';
+
+const MapContainer = lazy(() => import('./map/MapContainer'));
+const DigitalTwin = lazy(() => import('./digitalTwin/DigitalTwin'));
 
 function ThreatMonitoringZone() {
   const selectedLake  = useLakeStore(s => s.selectedLake);
-  const riskScore     = useLakeStore(s => s.riskScore);
   const riskTier      = useLakeStore(s => s.riskTier);
   const analysisState = useLakeStore(s => s.analysisState);
   const viewMode      = useLakeStore(s => s.viewMode);
 
   const [isMapCollapsed, setIsMapCollapsed] = useState(false);
-
-  /* Clamp score — prevents bar overflow on bad data */
-  const safeScore = Math.min(Math.max(riskScore, 0), 100);
 
   const tierLower  = riskTier.toLowerCase();
   const isScanning = analysisState === 'loading';
@@ -45,6 +36,12 @@ function ThreatMonitoringZone() {
       <div className="tmz-topbar">
         <span className="tmz-topbar__title">Threat Monitoring Zone</span>
         <div className="tmz-topbar__controls">
+          <RunAnalysisButton />
+          <div className="tmz-demo-pill">
+            <span className="demo-pill-label">AUTO:</span>
+            <DemoMode />
+          </div>
+          <span className="control-sep">|</span>
           <LakeSelector />
           
           {/* Collapse button — only visible on mobile/tablet via CSS */}
@@ -76,71 +73,40 @@ function ThreatMonitoringZone() {
         </div>
       </div>
 
-      {/* ── Lake info + AlertStatus ────────────────── */}
+      {/* ── Lake info ────────────────── */}
       <div className="tmz-lake-info">
-        <h2 className="tmz-lake-name">{selectedLake.name}</h2>
+        <div className="tmz-lake-header-row">
+          <h2 className="tmz-lake-name">{selectedLake.name}</h2>
+          <span className={`tmz-lake-tier-badge tier-badge--${tierLower}`}>
+            ● {riskTier}
+          </span>
+        </div>
 
         <div className="tmz-lake-meta">
           <span>{selectedLake.lakeId}</span>
           <span className="meta-dot" aria-hidden="true">·</span>
           <span>{lat} · {lng}</span>
         </div>
-
-        <div
-          className={`tier-status tier-status--${tierLower}`}
-          role="status"
-          aria-label={`Risk tier: ${riskTier} — Critical Alert Active`}
-        >
-          <span className="tier-status__dot" aria-hidden="true" />
-          {riskTier} — Critical Alert Active
-        </div>
-
-        <AlertStatus />
       </div>
 
       <div
         className={`tmz-frame ${isMapCollapsed ? 'is-collapsed' : ''}`}
         role="region"
-        aria-label={
-          viewMode === '2d'
-            ? `Geospatial map of ${selectedLake.name}`
-            : viewMode === '3d'
-            ? `3D Digital Twin of ${selectedLake.name}`
-            : `Flood Simulation of ${selectedLake.name}`
-        }
+        aria-label={`GLOF viewport for ${selectedLake.name}`}
       >
-        {viewMode === '2d' ? (
-          <MapContainer>
-            <LakeMarker />
-            <RiskRadius />
-            <ImpactRadius />
-            <MapControls />
-          </MapContainer>
-        ) : viewMode === '3d' ? (
-          <DigitalTwin />
-        ) : (
-          <FloodSimulation />
-        )}
-      </div>
-
-      {/* ── Risk tier status bar ───────────────────── */}
-      <div className={`tmz-status-bar tmz-status-bar--${tierLower}`}>
-        <span className="tmz-status-bar__label">RISK TIER</span>
-        <div
-          className="tmz-status-bar__track"
-          role="progressbar"
-          aria-valuenow={safeScore}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`Risk score: ${safeScore} out of 100`}
-        >
-          <div
-            className="tmz-status-bar__fill"
-            style={{ width: `${safeScore}%` }}
-          />
+        {/* 2D Map Viewport (Permanently Mounted) */}
+        <div className={`tmz-viewport-2d ${viewMode !== '2d' ? 'is-hidden' : ''}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+          <Suspense fallback={<div className="tmz-loading">LOADING GEOSPATIAL MAP...</div>}>
+            <MapContainer />
+          </Suspense>
         </div>
-        <span className="tmz-status-bar__score">{safeScore}/100</span>
-        <span className="tmz-status-bar__tier">{riskTier}</span>
+
+        {/* 3D/Simulation Shared Viewport (Permanently Mounted) */}
+        <div className={`tmz-viewport-3d ${viewMode === '2d' ? 'is-hidden' : ''}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+          <Suspense fallback={<div className="tmz-loading">LOADING DIGITAL TWIN...</div>}>
+            <DigitalTwin />
+          </Suspense>
+        </div>
       </div>
 
     </div>
@@ -148,4 +114,5 @@ function ThreatMonitoringZone() {
 }
 
 export default ThreatMonitoringZone;
+
 

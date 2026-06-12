@@ -4,6 +4,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import boundaryData from '../../data/geojson/thulagiBoundary.json';
 import { MapContext } from './mapUtils';
 import useLakeStore from '../../store/useLakeStore';
+import LakeMarker from './LakeMarker';
+import RiskRadius from './RiskRadius';
+import ImpactRadius from './ImpactRadius';
+import MapControls from './MapControls';
+
 
 const MAP_SOURCES = {
   'street': {
@@ -258,7 +263,15 @@ export default function MapContainer({ children }) {
     <div className="map-wrapper">
       <div ref={mapContainerRef} className="map-canvas-container" />
       <MapContext.Provider value={{ map, mapMode, setMapMode }}>
-        {map && children}
+        {map && (
+          <>
+            <LakeMarker />
+            <RiskRadius />
+            <ImpactRadius />
+            <MapControls />
+            {children}
+          </>
+        )}
       </MapContext.Provider>
     </div>
   );

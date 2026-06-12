@@ -2,10 +2,11 @@ import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import useLakeStore from '../../store/useLakeStore';
-import { FLOW_CURVE } from './simUtils';
+import { FLOW_CURVE as STATIC_FLOW_CURVE } from './simUtils';
 
-export default function ParticleSystem({ maxProgress }) {
+export default function ParticleSystem({ maxProgress, flowCurve }) {
   const riskScore = useLakeStore((s) => s.riskScore);
+  const activeCurve = flowCurve || STATIC_FLOW_CURVE;
 
   const particleCount = Math.min(2500, Math.max(200, Math.round(riskScore * 18)));
   const speedScale = Math.max(0.25, riskScore * 0.012);
@@ -48,7 +49,7 @@ export default function ParticleSystem({ maxProgress }) {
         p.progress = 0;
       }
 
-      const posOnCurve = FLOW_CURVE.getPointAt(p.progress);
+      const posOnCurve = activeCurve.getPointAt(p.progress);
 
       array[i * 3] = posOnCurve.x + p.offsetX * spreadScale;
       array[i * 3 + 1] = posOnCurve.y + p.offsetY * spreadScale * 0.4 + 0.04;

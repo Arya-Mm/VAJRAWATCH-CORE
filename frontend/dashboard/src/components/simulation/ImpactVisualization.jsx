@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 
-export default function ImpactVisualization({ maxProgress }) {
+export default function ImpactVisualization({ maxProgress, flowPathPoints }) {
   const pulsesRef = useRef([]);
 
   // Timing thresholds for downstream GLOF impact
@@ -28,10 +28,16 @@ export default function ImpactVisualization({ maxProgress }) {
   const hydroColor = hydroHit ? '#ef4444' : '#10b981';
   const villageColor = villageHit ? '#ef4444' : '#10b981';
 
+  // Dynamic positions matching the procedural flow path points
+  const bridgePos = flowPathPoints ? [flowPathPoints[3].x, flowPathPoints[3].y + 0.04, flowPathPoints[3].z] : [0.45, -0.16, 2.4];
+  const roadPos = flowPathPoints ? [flowPathPoints[4].x, flowPathPoints[4].y + 0.03, flowPathPoints[4].z] : [-0.4, -0.27, 3.4];
+  const hydroPos = flowPathPoints ? [flowPathPoints[5].x, flowPathPoints[5].y + 0.03, flowPathPoints[5].z] : [-0.25, -0.37, 4.2];
+  const villagePos = flowPathPoints ? [flowPathPoints[6].x, flowPathPoints[6].y + 0.04, flowPathPoints[6].z] : [0.1, -0.42, 4.9];
+
   return (
     <group>
       {/* 1. Bridge Crossing (Z = 2.4) */}
-      <group position={[0.45, -0.16, 2.4]}>
+      <group position={bridgePos}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1.0, 0.08, 0.25]} />
           <meshStandardMaterial color={bridgeColor} roughness={0.5} />
@@ -45,7 +51,7 @@ export default function ImpactVisualization({ maxProgress }) {
       </group>
 
       {/* 2. Mountain Road Segment (Z = 3.4) */}
-      <group position={[-0.4, -0.27, 3.4]}>
+      <group position={roadPos}>
         <mesh rotation={[0, Math.PI / 4, 0]}>
           <boxGeometry args={[0.15, 0.03, 1.2]} />
           <meshStandardMaterial color={roadColor} roughness={0.8} />
@@ -59,7 +65,7 @@ export default function ImpactVisualization({ maxProgress }) {
       </group>
 
       {/* 3. Hydropower Plant (Z = 4.2) */}
-      <group position={[-0.25, -0.37, 4.2]}>
+      <group position={hydroPos}>
         <mesh castShadow>
           <boxGeometry args={[0.4, 0.25, 0.3]} />
           <meshStandardMaterial color={hydroColor} roughness={0.4} metalness={0.5} />
@@ -73,7 +79,7 @@ export default function ImpactVisualization({ maxProgress }) {
       </group>
 
       {/* 4. Downstream Village / Houses (Z = 4.9) */}
-      <group position={[0.1, -0.42, 4.9]}>
+      <group position={villagePos}>
         {/* Render a cluster of 3 houses */}
         <mesh position={[-0.15, 0, -0.1]} castShadow>
           <boxGeometry args={[0.16, 0.12, 0.16]} />

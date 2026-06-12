@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -7,6 +7,11 @@ import TerrainMesh from './TerrainMesh';
 import LakeMesh from './LakeMesh';
 import RiskOverlay from './RiskOverlay';
 import CameraController from './CameraController';
+
+import FlowPath from '../simulation/FlowPath';
+import ParticleSystem from '../simulation/ParticleSystem';
+import ImpactVisualization from '../simulation/ImpactVisualization';
+import { TIMELINE_STEPS, getFlowCurveForLake, getFlowPathPointsForLake } from '../simulation/simUtils';
 
 function ZoomController() {
   const { camera, controls } = useThree();
@@ -36,6 +41,18 @@ export default function DigitalTwin() {
   const setViewMode = useLakeStore((s) => s.setViewMode);
   const trigger3DReset = useLakeStore((s) => s.trigger3DReset);
   const zoom3D = useLakeStore((s) => s.zoom3D);
+  const selectedLakeId = useLakeStore((s) => s.selectedLakeId);
+
+  const [activeStepIdx, setActiveStepIdx] = useState(0);
+  const activeStep = TIMELINE_STEPS[activeStepIdx];
+
+  const flowCurve = useMemo(() => {
+    return getFlowCurveForLake(selectedLakeId);
+  }, [selectedLakeId]);
+
+  const flowPathPoints = useMemo(() => {
+    return getFlowPathPointsForLake(selectedLakeId);
+  }, [selectedLakeId]);
 
   return (
     <div className="digital-twin-container">
@@ -54,9 +71,9 @@ export default function DigitalTwin() {
         {/* Tactical glowing hazard pointlight at lake center */}
         <pointLight
           position={[0, 0.5, 0]}
-          intensity={2.0}
-          distance={5}
-          color="#ef4444"
+          intensity={viewMode === 'simulation' && activeStepIdx > 0 ? 3.5 : 2.0}
+          distance={6}
+          color={viewMode === 'simulation' && activeStepIdx > 0 ? '#ef4444' : '#06b6d4'}
         />
 
         {/* Directional light representing high altitude sunlight */}
@@ -69,14 +86,21 @@ export default function DigitalTwin() {
           shadow-mapSize-height={1024}
         />
 
-        {/* Temporary diagnostics */}
-        <axesHelper args={[5]} />
-        <gridHelper args={[10, 10]} />
-
-        {/* Digital Twin Submeshes */}
+        {/* Digital Twin & Simulation Submeshes */}
         <TerrainMesh />
         <LakeMesh />
-        <RiskOverlay />
+
+        {/* Digital Twin Overlay */}
+        {viewMode === '3d' && <RiskOverlay />}
+
+        {/* Flood Simulation Overlays */}
+        {viewMode === 'simulation' && (
+          <>
+            <FlowPath flowCurve={flowCurve} selectedLakeId={selectedLakeId} />
+            <ParticleSystem maxProgress={activeStep.maxProgress} flowCurve={flowCurve} />
+            <ImpactVisualization maxProgress={activeStep.maxProgress} flowPathPoints={flowPathPoints} />
+          </>
+        )}
 
         {/* Camera HUD Action handlers */}
         <CameraController />
@@ -149,6 +173,33 @@ export default function DigitalTwin() {
           ⟲ <span className="control-btn-label">RESET</span>
         </button>
       </div>
+
+      {/* 3. Bottom HUD GLOF Simulation Timeline (Bottom-Center) */}
+      {viewMode === 'simulation' && (
+        <div className="sim-timeline-panel">
+          <div className="sim-timeline-header">
+            <span className="sim-timeline-title">GLOF Downstream Impact Simulation</span>
+            <span className="sim-timeline-status badge-red">
+              {activeStep.label.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="sim-timeline-steps">
+            {TIMELINE_STEPS.map((step, idx) => (
+              <button
+                key={step.time}
+                type="button"
+                className={`sim-step-btn ${activeStepIdx === idx ? 'active' : ''}`}
+                onClick={() => setActiveStepIdx(idx)}
+                aria-label={`Show GLOF status at ${step.time}`}
+              >
+                <span className="step-btn-time">{step.time}</span>
+                <span className="step-btn-label">{step.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

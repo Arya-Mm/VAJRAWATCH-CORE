@@ -12,19 +12,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import useLakeStore         from '../store/useLakeStore';
 import ThreatMonitoringZone from '../components/ThreatMonitoringZone';
-import AnalysisTimeline     from '../components/AnalysisTimeline';
-import AgentActivityPanel   from '../components/AgentActivityPanel';
 import RiskGauge            from '../components/RiskGauge';
 import TopDrivers           from '../components/TopDrivers';
 import ImpactPanel          from '../components/ImpactPanel';
-import RunAnalysisButton    from '../components/RunAnalysisButton';
 import AlertBanner          from '../components/AlertBanner';
-import DemoMode             from '../components/DemoMode';
 import ErrorBoundary        from '../components/ErrorBoundary';
 import AlertConsole         from '../components/AlertConsole';
 import PortfolioView        from '../components/PortfolioView';
-import RiskLeaderboard      from '../components/RiskLeaderboard';
 import CrossLakeComparison  from '../components/CrossLakeComparison';
+
 
 function Overview() {
   const riskScore     = useLakeStore(s => s.riskScore);
@@ -43,7 +39,7 @@ function Overview() {
     <div className="dashboard">
 
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="dashboard-header">
+      <header className={`dashboard-header status--${riskTier.toLowerCase()}`}>
 
         {/* Brand — live dot + wordmark */}
         <div className="header-brand">
@@ -56,14 +52,10 @@ function Overview() {
           <span className="wordmark">VAJRAWATCH</span>
         </div>
 
-        <span className="header-subtitle">GLOF Command Center</span>
-
-        {/* Controls — Demo mode + lakes stat */}
+        {/* Controls — monitoring stat */}
         <div className="header-controls">
-          <DemoMode />
           <div className="header-stat">
-            <span className="header-stat__value">4</span>
-            <span className="header-stat__label">Lakes Monitored</span>
+            <span className="header-stat__value">MONITORING: 47 LAKES <span className="header-stat__sep">//</span> ACTIVE ALERTS: 4</span>
           </div>
         </div>
 
@@ -74,26 +66,23 @@ function Overview() {
         {isCritical && <AlertBanner key="alert-banner" />}
       </AnimatePresence>
 
-      {/* ── Body — 3-column mission control ───────────────────── */}
+      {/* ── Body — Left/Right Split mission control ───────────────────── */}
       <div className="dashboard-body">
 
-        {/* Sidebar — Analysis Timeline + Agent Activity */}
-        <div className="sidebar-panel">
-          <AnalysisTimeline />
-          <div className="sidebar-divider" aria-hidden="true" />
-          <AgentActivityPanel />
-        </div>
-
-        {/* Hero — ThreatMonitoringZone + AlertConsole */}
-        <div className={`hero-panel${isCritical ? ' is-critical' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div style={{ flex: 1, minHeight: 0 }}>
+        {/* Left Column — TMZ + Timeline + AlertConsole */}
+        <div className={`left-column${isCritical ? ' is-critical' : ''}`}>
+          <div className="left-column-top">
             <ThreatMonitoringZone />
           </div>
-          <AlertConsole />
+          <div className="left-column-bottom">
+            <ErrorBoundary>
+              <AlertConsole />
+            </ErrorBoundary>
+          </div>
         </div>
 
-        {/* Intel — Risk Gauge · Top Drivers · Impact Severity */}
-        <div className="intel-panel">
+        {/* Right Column — Intel Panels */}
+        <div className="right-column">
 
           <div className="intel-toggle-bar">
             <button
@@ -112,55 +101,46 @@ function Overview() {
             </button>
           </div>
 
-          {intelViewMode === 'single' ? (
-            <>
-              <div className="intel-section">
-                <ErrorBoundary>
-                  <RiskGauge score={riskScore} tier={riskTier} isLoading={isLoading} />
-                </ErrorBoundary>
-              </div>
+          <div className="right-column-content">
+            {intelViewMode === 'single' ? (
+              <>
+                <div className="intel-section">
+                  <ErrorBoundary>
+                    <RiskGauge score={riskScore} tier={riskTier} isLoading={isLoading} />
+                  </ErrorBoundary>
+                </div>
 
-              <div className="intel-section">
-                <ErrorBoundary>
-                  <TopDrivers drivers={topDrivers} isLoading={isLoading} />
-                </ErrorBoundary>
-              </div>
+                <div className="intel-section">
+                  <ErrorBoundary>
+                    <TopDrivers drivers={topDrivers} isLoading={isLoading} />
+                  </ErrorBoundary>
+                </div>
 
-              <div className="intel-section">
-                <ErrorBoundary>
-                  <ImpactPanel impact={impactData} isLoading={isLoading} />
-                </ErrorBoundary>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="intel-section">
-                <ErrorBoundary>
-                  <PortfolioView />
-                </ErrorBoundary>
-              </div>
+                <div className="intel-section">
+                  <ErrorBoundary>
+                    <ImpactPanel impact={impactData} isLoading={isLoading} />
+                  </ErrorBoundary>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="intel-section">
+                  <ErrorBoundary>
+                    <PortfolioView />
+                  </ErrorBoundary>
+                </div>
 
-              <div className="intel-section">
-                <ErrorBoundary>
-                  <RiskLeaderboard />
-                </ErrorBoundary>
-              </div>
-
-              <div className="intel-section">
-                <ErrorBoundary>
-                  <CrossLakeComparison />
-                </ErrorBoundary>
-              </div>
-            </>
-          )}
+                <div className="intel-section">
+                  <ErrorBoundary>
+                    <CrossLakeComparison />
+                  </ErrorBoundary>
+                </div>
+              </>
+            )}
+          </div>
 
         </div>
 
-      </div>
-
-      {/* ── Footer — Run Analysis ──────────────────────────────── */}
-      <div className="run-analysis-footer">
-        <RunAnalysisButton />
       </div>
 
     </div>
