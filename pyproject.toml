@@ -1,0 +1,113 @@
+[project]
+name = "vajrawatch-core"
+version = "0.3.0"
+description = "Production-grade backend for VajraWatch GLOF early warning orchestration."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "arq",
+    "argon2-cffi",
+    "email-validator",
+    "fastapi",
+    "google-antigravity",
+    "httpx",
+    "neo4j",
+    "prometheus-client",
+    "pydantic",
+    "pydantic-settings",
+    "PyJWT",
+    "python-dotenv",
+    "python-multipart",
+    "redis",
+    "structlog",
+    "uvicorn[standard]",
+]
+
+[dependency-groups]
+dev = [
+    "black",
+    "mypy",
+    "pre-commit",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "types-PyJWT",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["backend", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ASYNC",
+    "B",
+    "C4",
+    "E",
+    "F",
+    "I",
+    "N",
+    "PT",
+    "RUF",
+    "S",
+    "SIM",
+    "UP",
+    "W",
+]
+ignore = [
+    "S101",
+    "S104",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S105", "S106", "S107"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+strict = true
+warn_unreachable = true
+pretty = true
+show_error_codes = true
+exclude = [
+    "^.venv/",
+    "^venv/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "google.antigravity.*",
+    "arq.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q --strict-markers --disable-warnings"
+markers = [
+    "live: requires live external credentials or services",
+]
+
+[tool.pyrefly]
+project-excludes = [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/*venv/**/*",
+    "**/.tox",
+    "**/.tox/**/*",
+    "**/.ruff_cache",
+    "c:/__pyrefly_virtual__/**/*",
+    "**/__pyrefly_virtual__/**/*",
+    "**/*inmemory*/**/*",
+    "**/*inmemory*",
+]
+
+

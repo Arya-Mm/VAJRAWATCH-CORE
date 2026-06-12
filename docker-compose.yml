@@ -1,18 +1,4 @@
-version: "3.9"
-
 services:
-  db:
-    image: postgis/postgis:15-3.4
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: vajrawatch
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     ports:
@@ -21,33 +7,29 @@ services:
       - redisdata:/data
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollamadata:/root/.ollama
-    restart: unless-stopped
-
   backend:
-    build: 
+    build:
       context: .
       dockerfile: backend/Dockerfile
-    ports: ["8000:8000"]
+    ports:
+      - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgrespassword@db:5432/vajrawatch
-      - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_BASE_URL=http://ollama:11434
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-with-a-strong-local-secret}
+      NEO4J_URI: ${NEO4J_URI:-}
+      NEO4J_USERNAME: ${NEO4J_USERNAME:-}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
+      REDIS_URL: redis://redis:6379/0
+      ANTIGRAVITY_ENABLED: ${ANTIGRAVITY_ENABLED:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
-      - db
       - redis
-      - ollama
-    volumes: 
+    volumes:
       - .:/app
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
-  pgdata:
   redisdata:
-  ollamadata:
 

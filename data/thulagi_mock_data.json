@@ -1,15 +1,12 @@
 {
   "lake_id": "PDGL_THULAGI_01",
   "name": "Thulagi Lake",
-  "timestamp": "2026-06-12T19:00:00Z",
-  "features": {
-    "ndwi_delta": 18.5,
-    "sar_backscatter_change": 2.1,
-    "precip_7d_mm": 210.0,
-    "temp_anomaly_c": 3.2,
-    "seismic_count_14d": 2,
-    "seismic_max_magnitude": 3.1,
-    "nvidia_precip_5day_mm": 145.0,
-    "lake_area_km2": 0.88
-  }
+  "ndwi_delta": 0.185,
+  "sar_backscatter_change": -2.4,
+  "precip_7d_mm": 210.0,
+  "temp_anomaly_c": 2.8,
+  "seismic_count_14d": 3,
+  "seismic_max_magnitude": 3.8,
+  "nvidia_precip_5day_mm": 95.0,
+  "lake_area_km2": 0.52
 }
