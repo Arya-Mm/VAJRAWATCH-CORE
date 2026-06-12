@@ -1,0 +1,10 @@
+-r requirements.in
+black
+mypy
+pre-commit
+pytest
+pytest-asyncio
+pytest-cov
+ruff
+types-PyJWT
+

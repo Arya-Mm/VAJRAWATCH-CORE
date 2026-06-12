@@ -1,0 +1,4 @@
+lake_id,name,lat,lon,risk_tier,elevation_m
+PDGL_THULAGI_01,Thulagi Lake,28.5283,84.4891,HIGH,4044
+PDGL_IMJA_02,Imja Tsho,27.8964,86.9242,HIGH,5010
+PDGL_LBARUN_03,Lower Barun,27.8011,87.0872,HIGH,4540
