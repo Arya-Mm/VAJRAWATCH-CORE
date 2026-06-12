@@ -54,7 +54,7 @@ services:
       NVIDIA_API_KEY: ${NVIDIA_API_KEY}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
     volumes: 
-      - ./backend:/app
+      - ./backend:/app/backend
       - ./data:/app/data
 
 volumes:
