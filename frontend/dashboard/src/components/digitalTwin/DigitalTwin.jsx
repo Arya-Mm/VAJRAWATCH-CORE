@@ -69,6 +69,10 @@ export default function DigitalTwin() {
           shadow-mapSize-height={1024}
         />
 
+        {/* Temporary diagnostics */}
+        <axesHelper args={[5]} />
+        <gridHelper args={[10, 10]} />
+
         {/* Digital Twin Submeshes */}
         <TerrainMesh />
         <LakeMesh />

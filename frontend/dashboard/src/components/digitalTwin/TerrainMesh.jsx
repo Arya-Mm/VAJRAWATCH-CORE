@@ -1,12 +1,13 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 import useLakeStore from '../../store/useLakeStore';
 
 // Simple hashing function to generate coordinates offset seed from lakeId
 function getLakeSeedOffsets(lakeId) {
+  const safeId = lakeId || 'PDGL_THULAGI_01';
   let hash = 0;
-  for (let i = 0; i < lakeId.length; i++) {
-    hash = lakeId.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < safeId.length; i++) {
+    hash = safeId.charCodeAt(i) + ((hash << 5) - hash);
   }
   const xOffset = ((hash & 0xFF) / 255.0) * 1.5;
   const yOffset = (((hash >> 8) & 0xFF) / 255.0) * 1.5;
@@ -146,13 +147,7 @@ export default function TerrainMesh() {
     return tex;
   }, [colorCanvas]);
 
-  // Texture memory management to prevent memory leaks on GPU when swapping lakes
-  useEffect(() => {
-    return () => {
-      dispTexture.dispose();
-      colorTexture.dispose();
-    };
-  }, [dispTexture, colorTexture]);
+
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.5, 0]}>

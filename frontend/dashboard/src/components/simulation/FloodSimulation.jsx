@@ -69,6 +69,10 @@ export default function FloodSimulation() {
           castShadow
         />
 
+        {/* Temporary diagnostics */}
+        <axesHelper args={[5]} />
+        <gridHelper args={[10, 10]} />
+
         {/* Render base topography meshes */}
         <TerrainMesh />
         <LakeMesh />

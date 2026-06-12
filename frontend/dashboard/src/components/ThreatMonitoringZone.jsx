@@ -16,6 +16,7 @@ import ImpactRadius from './map/ImpactRadius';
 import MapControls from './map/MapControls';
 import DigitalTwin from './digitalTwin/DigitalTwin';
 import LakeSelector from './LakeSelector';
+import FloodSimulation from './simulation/FloodSimulation';
 
 function ThreatMonitoringZone() {
   const selectedLake  = useLakeStore(s => s.selectedLake);
@@ -97,11 +98,16 @@ function ThreatMonitoringZone() {
         <AlertStatus />
       </div>
 
-      {/* ── Map/Digital Twin Frame (Interactive GIS/3D) ──── */}
       <div
         className={`tmz-frame ${isMapCollapsed ? 'is-collapsed' : ''}`}
         role="region"
-        aria-label={viewMode === '2d' ? `Geospatial map of ${selectedLake.name}` : `3D Digital Twin of ${selectedLake.name}`}
+        aria-label={
+          viewMode === '2d'
+            ? `Geospatial map of ${selectedLake.name}`
+            : viewMode === '3d'
+            ? `3D Digital Twin of ${selectedLake.name}`
+            : `Flood Simulation of ${selectedLake.name}`
+        }
       >
         {viewMode === '2d' ? (
           <MapContainer>
@@ -110,8 +116,10 @@ function ThreatMonitoringZone() {
             <ImpactRadius />
             <MapControls />
           </MapContainer>
-        ) : (
+        ) : viewMode === '3d' ? (
           <DigitalTwin />
+        ) : (
+          <FloodSimulation />
         )}
       </div>
 
