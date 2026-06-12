@@ -127,7 +127,7 @@ export default function MapContainer({ children }) {
       style: MAP_STYLE,
       center: THULAGI_COORDS,
       zoom: 12.2,
-      pitch: 35, // Tilt slightly on load to showcase 3D topography depth
+      pitch: 20, // Tilt slightly on load to showcase 3D topography depth
       bearing: 0,
       attributionControl: false,
       maxZoom: 18,
@@ -204,7 +204,7 @@ export default function MapContainer({ children }) {
       // Enable terrain 3D exaggeration
       mapInstance.setTerrain({
         source: 'terrain-dem',
-        exaggeration: 1.5
+        exaggeration: 1.1
       });
 
       setMap(mapInstance);

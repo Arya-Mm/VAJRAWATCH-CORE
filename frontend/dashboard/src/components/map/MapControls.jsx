@@ -27,7 +27,7 @@ export default function MapControls() {
     map.flyTo({
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
-      pitch: 35, // Reset to tilted perspective
+      pitch: 20, // Reset to tilted perspective
       bearing: 0,
       essential: true
     });
