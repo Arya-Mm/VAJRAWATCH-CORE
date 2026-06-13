@@ -201,7 +201,7 @@ def health() -> dict[str, Any]:
 from datetime import datetime
 
 @app.get("/risk/{lake_id}")
-def get_risk(lake_id: str) -> dict[str, Any]:
+def get_risk(lake_id: str, demo_mode: bool = False) -> dict[str, Any]:
     mock_data_path = ROOT_DIR / "data" / "thulagi_mock_data.json"
     with open(mock_data_path) as f:
         data = json.load(f)
@@ -223,9 +223,11 @@ def get_risk(lake_id: str) -> dict[str, Any]:
         "skeptic_verdict": "",
         "evacuation_route": "",
         "audio_url": "",
-        "alert_dispatched": False,
         "report": "",
         "agent_trace": [],
+        "is_demo_mode": demo_mode,
+        "diagnostics": {},
+        "active_pipeline": "",
     }
 
     result = GRAPH.invoke(state)
@@ -241,7 +243,7 @@ def get_risk(lake_id: str) -> dict[str, Any]:
         "audio_url": result.get("audio_url"),
         "weather_source": weather["source"],
         "evacuation_route": result.get("evacuation_route"),
-        "alert_dispatched": result.get("alert_dispatched", False),
+        "active_pipeline": result.get("active_pipeline", "LEAN"),
         "impact": {
             "population": 12480,
             "hydropower_mw": 186,

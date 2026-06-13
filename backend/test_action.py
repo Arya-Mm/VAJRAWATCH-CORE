@@ -20,7 +20,6 @@ def run_integration_test():
     lean_state: GLOFState = {
         "lake_id": "PDGL_THULAGI_01",
         "raw_data": {
-            "is_demo_mode": True,
             "ndwi_delta": 0.55,
             "sar_backscatter_change": -3.5,
             "precip_7d_mm": 380.0,
@@ -35,20 +34,22 @@ def run_integration_test():
         "skeptic_verdict": "",
         "evacuation_route": "",
         "audio_url": "",
-        "alert_dispatched": False,
         "report": "",
-        "agent_trace": []
+        "agent_trace": [],
+        "is_demo_mode": True,
+        "diagnostics": {},
+        "active_pipeline": ""
     }
 
     result_lean = GRAPH.invoke(lean_state)
     
     print("\nResulting LEAN State:")
+    print(f"Active Pipeline: {result_lean.get('active_pipeline')}")
     print(f"Risk Score: {result_lean.get('risk_result', {}).get('risk_score')}")
     print(f"Risk Tier: {result_lean.get('risk_result', {}).get('risk_tier')}")
     print(f"Skeptic Verdict: {result_lean.get('skeptic_verdict')}")
     print(f"Evacuation Route: {result_lean.get('evacuation_route')}")
     print(f"Audio URL: {result_lean.get('audio_url')}")
-    print(f"Alert Dispatched: {result_lean.get('alert_dispatched')}")
     print(f"Report Brief: {result_lean.get('report')}")
     print("\nAgent Trace:")
     for trace in result_lean.get("agent_trace", []):
@@ -59,7 +60,6 @@ def run_integration_test():
     prod_state: GLOFState = {
         "lake_id": "PDGL_THULAGI_01",
         "raw_data": {
-            "is_demo_mode": False,
             "ndwi_delta": 0.55,
             "sar_backscatter_change": -3.5,
             "precip_7d_mm": 380.0,
@@ -74,20 +74,23 @@ def run_integration_test():
         "skeptic_verdict": "",
         "evacuation_route": "",
         "audio_url": "",
-        "alert_dispatched": False,
         "report": "",
-        "agent_trace": []
+        "agent_trace": [],
+        "is_demo_mode": False,
+        "diagnostics": {},
+        "active_pipeline": ""
     }
 
     result_prod = GRAPH.invoke(prod_state)
     
     print("\nResulting PRODUCTION State:")
+    print(f"Active Pipeline: {result_prod.get('active_pipeline')}")
+    print(f"Diagnostics: {result_prod.get('diagnostics')}")
     print(f"Risk Score: {result_prod.get('risk_result', {}).get('risk_score')}")
     print(f"Risk Tier: {result_prod.get('risk_result', {}).get('risk_tier')}")
     print(f"Skeptic Verdict: {result_prod.get('skeptic_verdict')}")
     print(f"Evacuation Route: {result_prod.get('evacuation_route')}")
     print(f"Audio URL: {result_prod.get('audio_url')}")
-    print(f"Alert Dispatched: {result_prod.get('alert_dispatched')}")
     print(f"Report Brief: {result_prod.get('report')}")
     print("\nAgent Trace:")
     for trace in result_prod.get("agent_trace", []):
