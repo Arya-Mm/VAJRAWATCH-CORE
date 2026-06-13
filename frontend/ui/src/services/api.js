@@ -102,7 +102,11 @@ export async function runAnalysis(lakeId) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetch(`${API_BASE_URL}/risk/${lakeId}`, { signal: controller.signal });
+    // Phase 3 constraint: hit POST /simulate to flip state
+    const response = await fetch(`${API_BASE_URL}/simulate/${lakeId}`, { 
+      method: 'POST',
+      signal: controller.signal 
+    });
     clearTimeout(timeoutId);
     if (!response.ok) throw new Error(`API returned status ${response.status}`);
     const data = await response.json();
