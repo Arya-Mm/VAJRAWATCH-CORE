@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import MapContainer from './components/MapContainer';
 import Sidebar from './components/Sidebar';
 import Hero from './components/Hero';
+import AlertBanner from './components/AlertBanner';
+import { monitorService } from './services/monitor';
 
 /**
  * VAJRAWATCH — Root Application Shell
@@ -24,6 +26,11 @@ export default function App() {
   const [view, setView] = useState('landing');
   const [activeLakeId, setActiveLakeId] = useState('PDGL_THULAGI_01');
 
+  useEffect(() => {
+    monitorService.start();
+    return () => monitorService.stop();
+  }, []);
+
   if (view === 'landing') {
     return (
       <Hero onEnterDashboard={() => setView('dashboard')} />
@@ -42,6 +49,7 @@ export default function App() {
         overflow: 'hidden',
       }}
     >
+      <AlertBanner />
       {/* Topmost fixed header — 64px */}
       <Header />
 
