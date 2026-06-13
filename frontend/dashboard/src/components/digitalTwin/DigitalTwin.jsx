@@ -117,6 +117,18 @@ export default function DigitalTwin() {
         />
       </Canvas>
 
+      {/* Procedural Terrain Watermark — visible in 3D and FLOW RENDERING modes */}
+      {(viewMode === '3d' || viewMode === 'simulation') && (
+        <div
+          className="terrain-workspace-badge"
+          aria-label="Visualization workspace disclaimer"
+          title="Terrain is procedural (Math.sin/cos). Not sourced from SRTM, Copernicus DEM, or any real elevation dataset."
+        >
+          <span className="terrain-workspace-badge__dot" aria-hidden="true" />
+          PROCEDURAL TERRAIN · VISUALIZATION WORKSPACE
+        </div>
+      )}
+
       {/* 1. Map Modes HUD Toggle (Top-Left) */}
       <div className="map-modes-toggle" role="group" aria-label="Map Mode">
         <button
@@ -130,16 +142,18 @@ export default function DigitalTwin() {
           type="button"
           className={`mode-btn ${viewMode === '3d' ? 'active' : ''}`}
           onClick={() => setViewMode('3d')}
+          title="Procedural terrain visualization — not sourced from real DEM data"
         >
-          3D DIGITAL TWIN
+          3D VISUALIZATION
         </button>
         <button
           type="button"
           className={`mode-btn ${viewMode === 'simulation' ? 'active' : ''}`}
           onClick={() => setViewMode('simulation')}
-          aria-label="Flood Simulation"
+          aria-label="Flow Rendering Workspace"
+          title="Visual flow rendering — not a hydraulic simulation model"
         >
-          FLOOD SIMULATION
+          FLOW RENDERING
         </button>
       </div>
 
@@ -178,7 +192,7 @@ export default function DigitalTwin() {
       {viewMode === 'simulation' && (
         <div className="sim-timeline-panel">
           <div className="sim-timeline-header">
-            <span className="sim-timeline-title">GLOF Downstream Impact Simulation</span>
+            <span className="sim-timeline-title">Downstream Flow Visualization</span>
             <span className="sim-timeline-status badge-red">
               {activeStep.label.toUpperCase()}
             </span>

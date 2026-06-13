@@ -1,35 +1,63 @@
 /**
- * AnalysisTimeline — Phase 3
- * Shows the 5-step analysis pipeline.
- * Steps activate progressively during 'loading' state (300ms stagger).
- * All COMPLETE when 'critical'. All PENDING when 'idle'.
+ * AnalysisTimeline — LangGraph Agent Pipeline
+ * Displays the 5-agent AI analysis chain.
+ * Agents activate progressively during 'loading' state (300 ms stagger).
+ * All COMPLETE when backend returns data. All PENDING when idle.
+ *
+ * Honest framing: this visualises the agent orchestration pipeline.
+ * It does NOT generate or display risk values — those come from the backend.
  */
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useLakeStore from '../store/useLakeStore';
 
-const STEPS = [
-  { code: 'SAT', label: 'Satellite Scan'   },
-  { code: 'WTH', label: 'Weather Analysis' },
-  { code: 'SIS', label: 'Seismic Analysis' },
-  { code: 'RSK', label: 'Risk Assessment'  },
-  { code: 'ALT', label: 'Alert Generated'  },
+const AGENTS = [
+  {
+    code:     'SAT',
+    name:     'Satellite Agent',
+    role:     'Image ingestion · Lake area Δ detection',
+    icon:     '🛰️',
+  },
+  {
+    code:     'WTH',
+    name:     'Weather Agent',
+    role:     'Precipitation · Temperature anomaly',
+    icon:     '🌦️',
+  },
+  {
+    code:     'HYD',
+    name:     'Hydrology Agent',
+    role:     'Ice-melt flux · Water volume estimate',
+    icon:     '💧',
+  },
+  {
+    code:     'RSK',
+    name:     'Risk Fusion Agent',
+    role:     'Multi-factor scoring · Confidence weighting',
+    icon:     '⚡',
+  },
+  {
+    code:     'ALT',
+    name:     'Alert Generator',
+    role:     'Tier dispatch · Action recommendation',
+    icon:     '🚨',
+  },
 ];
 
-const STEP_DELAYS = [0, 300, 600, 900, 1200]; // ms within 1500ms window
+const STEP_DELAYS = [0, 300, 600, 900, 1200]; // ms within 1500 ms window
 
-function getStatus(stepIdx, activeStep) {
+function getStatus(agentIdx, activeStep) {
   if (activeStep === -1) return 'pending';
-  if (stepIdx < activeStep) return 'complete';
-  if (stepIdx === activeStep) return 'active';
+  if (agentIdx < activeStep) return 'complete';
+  if (agentIdx === activeStep) return 'active';
   return 'pending';
 }
 
 const STATUS_LABELS = {
   pending:  'PENDING',
-  active:   'ACTIVE',
-  complete: 'COMPLETE',
+  active:   'RUNNING',
+  complete: 'DONE',
 };
 
 function AnalysisTimeline() {
@@ -45,7 +73,7 @@ function AnalysisTimeline() {
         timers.push(setTimeout(() => setActiveStep(i + 1), delay));
       });
     } else if (analysisState === 'critical') {
-      timers.push(setTimeout(() => setActiveStep(STEPS.length), 0));
+      timers.push(setTimeout(() => setActiveStep(AGENTS.length), 0));
     } else {
       timers.push(setTimeout(() => setActiveStep(-1), 0));
     }
@@ -55,46 +83,61 @@ function AnalysisTimeline() {
 
   return (
     <div className="analysis-timeline">
-      <p className="section-label">Analysis Pipeline</p>
+      <p className="section-label">LangGraph Agent Pipeline</p>
 
       <div className="timeline-steps">
-        {STEPS.map((step, i) => {
+        {AGENTS.map((agent, i) => {
           const status = getStatus(i, activeStep);
 
           return (
-            <div key={step.code} className="timeline-row">
+            <div key={agent.code} className="timeline-row">
 
-              {/* Step */}
+              {/* Agent Step */}
               <div className={`timeline-step timeline-step--${status}`}>
+
+                {/* Icon + marker */}
                 <div className="timeline-step__marker" aria-hidden="true">
-                  {status === 'complete' ? '✓' : status === 'active' ? '▸' : '○'}
+                  {status === 'complete'
+                    ? '✓'
+                    : status === 'active'
+                    ? <span className="pulse-dot" />
+                    : '○'}
                 </div>
-                <span className="timeline-step__code">{step.code}</span>
-                <span className="timeline-step__label">{step.label}</span>
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={status}
-                    className={`timeline-step__status timeline-step__status--${status}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {STATUS_LABELS[status]}
-                  </motion.span>
-                </AnimatePresence>
+
+                {/* Agent info */}
+                <div className="timeline-step__info">
+                  <div className="timeline-step__header">
+                    <span className="timeline-step__icon" aria-hidden="true">{agent.icon}</span>
+                    <span className="timeline-step__name">{agent.name}</span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={status}
+                        className={`timeline-step__status timeline-step__status--${status}`}
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        {STATUS_LABELS[status]}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
+                  <span className="timeline-step__role">{agent.role}</span>
+                </div>
+
               </div>
 
-              {/* Connector between steps */}
-              {i < STEPS.length - 1 && (
-                <div className="timeline-connector">
+              {/* Animated arrow connector between agents */}
+              {i < AGENTS.length - 1 && (
+                <div className="timeline-connector" aria-hidden="true">
                   <motion.div
                     className="timeline-connector__fill"
                     initial={{ scaleY: 0 }}
                     animate={{ scaleY: activeStep > i ? 1 : 0 }}
-                    transition={{ duration: 0.25 }}
+                    transition={{ duration: 0.22 }}
                     style={{ transformOrigin: 'top' }}
                   />
+                  <span className="timeline-connector__arrow">↓</span>
                 </div>
               )}
 
