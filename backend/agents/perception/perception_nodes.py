@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Demo anchor coordinates for Thulagi Lake
 LAT = 28.538
@@ -34,6 +34,12 @@ def weather_node(state: dict) -> dict:
     if "agent_trace" not in state:
         state["agent_trace"] = []
 
+    if state.get("is_simulation"):
+        state["raw_data"]["precip_7d_mm"] = 350.0
+        state["raw_data"]["temp_anomaly_c"] = 6.5
+        state["agent_trace"].append({"agent": "Weather Agent", "status": "Simulated Weather: 350.0mm precip."})
+        return state
+
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": LAT,
@@ -44,7 +50,7 @@ def weather_node(state: dict) -> dict:
         "timezone": "auto"
     }
     try:
-        r = requests.get(url, params=params, timeout=8.0)
+        r = requests.get(url, params=params, timeout=2.0)
         r.raise_for_status()
         data = r.json()
         precip_7d = sum(data["daily"]["precipitation_sum"])
@@ -64,7 +70,13 @@ def seismic_node(state: dict) -> dict:
     if "agent_trace" not in state:
         state["agent_trace"] = []
 
-    end_time = datetime.utcnow()
+    if state.get("is_simulation"):
+        state["raw_data"]["seismic_count_14d"] = 8
+        state["raw_data"]["seismic_max_magnitude"] = 6.2
+        state["agent_trace"].append({"agent": "Seismic Agent", "status": "Simulated Seismic: 8 events, max M6.2."})
+        return state
+
+    end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(days=14)
     url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
     params = {
@@ -77,7 +89,7 @@ def seismic_node(state: dict) -> dict:
         "minmagnitude": 3.0
     }
     try:
-        r = requests.get(url, params=params, timeout=8.0)
+        r = requests.get(url, params=params, timeout=2.0)
         r.raise_for_status()
         data = r.json()
         count = data["metadata"]["count"]
@@ -98,6 +110,11 @@ def nvidia_forecast_node(state: dict) -> dict:
     if "agent_trace" not in state:
         state["agent_trace"] = []
 
+    if state.get("is_simulation"):
+        state["raw_data"]["nvidia_precip_5day_mm"] = 220.0
+        state["agent_trace"].append({"agent": "NVIDIA Forecast Agent", "status": "Simulated NVIDIA Forecast: 220.0mm."})
+        return state
+
     api_key = os.getenv("NVIDIA_API_KEY")
     success = False
     
@@ -111,7 +128,7 @@ def nvidia_forecast_node(state: dict) -> dict:
                     "messages": [{"role": "user", "content": f"5-day precipitation forecast for lat {LAT} lon {LON}"}],
                     "max_tokens": 100
                 },
-                timeout=8.0
+                timeout=2.0
             )
             if r.status_code == 200:
                 # Simulated extraction from NIM text response
@@ -127,7 +144,7 @@ def nvidia_forecast_node(state: dict) -> dict:
             r = requests.get(
                 "https://api.open-meteo.com/v1/forecast",
                 params={"latitude": LAT, "longitude": LON, "daily": "precipitation_sum", "forecast_days": 5, "timezone": "auto"},
-                timeout=8.0
+                timeout=2.0
             )
             r.raise_for_status()
             precip = sum(r.json()["daily"]["precipitation_sum"])
