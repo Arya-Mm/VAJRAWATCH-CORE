@@ -169,19 +169,11 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
               </span>
             </div>
             
-            {/* Phase 5 Invisible Dropdown */}
-            <select
-              value={activeLakeId}
-              onChange={(e) => setActiveLakeId(e.target.value)}
-              className="text-3xl font-serif text-[#000000] tracking-tight leading-tight appearance-none bg-transparent border-none p-0 outline-none cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
-              style={{ paddingRight: '1rem' }} // Add a little space for the invisible hit area
+            <div
+              className="text-3xl font-serif text-[#000000] tracking-tight leading-tight pb-1"
             >
-              {Object.values(MOCK_LAKES).map(lake => (
-                <option key={lake.lake_id} value={lake.lake_id} className="bg-[#FFFFFF] text-[#000000] font-sans text-base">
-                  {lake.name}
-                </option>
-              ))}
-            </select>
+              {data.name}
+            </div>
 
             <div className="text-[10.5px] font-mono text-[#6F6F6F] mt-1">
               {data.lake_id}

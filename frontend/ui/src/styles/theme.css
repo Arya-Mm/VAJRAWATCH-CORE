@@ -1,0 +1,93 @@
+/* ============================================
+   VAJRAWATCH — ANIMATION THEME
+   ============================================ */
+
+/* ── Keyframes ──────────────────────────────── */
+@keyframes fadeRise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+  60%       { opacity: 0.7; box-shadow: 0 0 0 7px rgba(239,68,68,0); }
+}
+
+@keyframes scan-line {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(3000%); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes risk-rise {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Utility classes ────────────────────────── */
+.animate-fade-rise            { animation: fadeRise 0.9s ease-out both; }
+.animate-fade-rise-d1         { animation: fadeRise 0.9s ease-out 0.12s both; }
+.animate-fade-rise-d2         { animation: fadeRise 0.9s ease-out 0.24s both; }
+.animate-fade-rise-d3         { animation: fadeRise 0.9s ease-out 0.38s both; }
+.animate-fade-rise-d4         { animation: fadeRise 0.9s ease-out 0.52s both; }
+
+.animate-risk-rise            { animation: risk-rise 0.7s cubic-bezier(0.16,1,0.3,1) 0.3s both; }
+
+/* ── Live dot ───────────────────────────────── */
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  display: inline-block;
+  flex-shrink: 0;
+  animation: pulse-dot 2.2s ease-in-out infinite;
+}
+
+/* ── Scan line on terrain viz ───────────────── */
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.scan-overlay::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(239,68,68,0.35), transparent);
+  animation: scan-line 5s linear infinite;
+}
+
+/* ── Section divider ────────────────────────── */
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.07) 20%, rgba(255,255,255,0.07) 80%, transparent);
+}
+
+/* ── Glassmorphic panel ─────────────────────── */
+.glass-panel {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.875rem;
+}
+
+/* ── Scrollbar ──────────────────────────────── */
+.landing-scroll::-webkit-scrollbar       { width: 3px; }
+.landing-scroll::-webkit-scrollbar-track { background: #050505; }
+.landing-scroll::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+
+/* ── Instrument Serif headlines ─────────────── */
+.font-serif-display {
+  font-family: 'Instrument Serif', 'Georgia', serif;
+  font-weight: 400;
+}

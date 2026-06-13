@@ -2,22 +2,35 @@ import { useState } from 'react';
 import Header from './components/Header';
 import MapContainer from './components/MapContainer';
 import Sidebar from './components/Sidebar';
+import Hero from './components/Hero';
 
 /**
  * VAJRAWATCH — Root Application Shell
  *
- * Layout:
+ * Views:
+ *   'landing'   — Cinematic hero / landing page (scrollable)
+ *   'dashboard' — Full command centre / Live Map (the real consumer map)
+ *
+ * Dashboard Layout:
  *   ┌──────────────────────────────────────────────┐
  *   │ Header (64px) — F-Pattern brand anchor        │
  *   ├──────────────────────────────┬───────────────┤
  *   │ MapContainer (60%)           │ Sidebar (40%) │
- *   │ 2D/3D canvas + location pin  │ Risk data +   │
+ *   │ 2D/3D canvas + GeoJSON       │ Risk data +   │
  *   │                              │ RUN ANALYSIS  │
  *   └──────────────────────────────┴───────────────┘
  */
 export default function App() {
-  const [activeLakeId, setActiveLakeId] = useState("PDGL_THULAGI_01");
+  const [view, setView] = useState('landing');
+  const [activeLakeId, setActiveLakeId] = useState('PDGL_THULAGI_01');
 
+  if (view === 'landing') {
+    return (
+      <Hero onEnterDashboard={() => setView('dashboard')} />
+    );
+  }
+
+  // 'dashboard' — the actual live map view
   return (
     <div
       style={{
@@ -38,11 +51,15 @@ export default function App() {
           flex: 1,
           display: 'flex',
           overflow: 'hidden',
-          minHeight: 0, // critical for flex children to shrink correctly
+          minHeight: 0,
         }}
       >
         {/* Left 60% — visual map canvas */}
-        <MapContainer activeLakeId={activeLakeId} setActiveLakeId={setActiveLakeId} />
+        <MapContainer
+          activeLakeId={activeLakeId}
+          setActiveLakeId={setActiveLakeId}
+          onGoBack={() => setView('landing')}
+        />
 
         {/* Right 40% — data sidebar & action panel */}
         <Sidebar activeLakeId={activeLakeId} setActiveLakeId={setActiveLakeId} />
