@@ -109,8 +109,20 @@ function CriticalAlertBanner({ data }) {
 
 // ─── Agent Trace Row ─────────────────────────────────────────────────────────
 function AgentTrace({ trace, index, visible }) {
-  const colors = ['#60A5FA', '#34D399', RED, '#FBBF24', '#F97316'];
-  const dotColor = colors[index] || '#60A5FA';
+  const colors = [
+    '#60A5FA', // Sentinel (blue)
+    '#34D399', // Weather (green-cyan)
+    '#0284c7', // Seismic (sky-blue)
+    '#818cf8', // NVIDIA (indigo)
+    '#c084fc', // Risk Fusion (purple)
+    '#FBBF24', // Skeptic (yellow)
+    '#f472b6', // GraphRAG (pink)
+    '#fb7185', // Evacuation (rose)
+    '#e11d48', // Report (crimson)
+    '#F97316', // Alert Dispatcher (orange)
+    '#ef4444'  // Nepali TTS (red)
+  ];
+  const dotColor = colors[index % colors.length];
   return (
     <motion.div
       initial={{ opacity: 0, x: -8 }}
@@ -236,9 +248,30 @@ export default function Sidebar({ activeLakeId, setActiveLakeId }) {
               </span>
             </div>
 
-            <div style={{ fontSize: '1.9rem', fontWeight: 400, color: T_PRI, letterSpacing: '-0.03em', lineHeight: 1.1, fontFamily: 'var(--font-serif)' }}>
-              {data.name}
-            </div>
+            <select
+              value={activeLakeId}
+              onChange={(e) => setActiveLakeId(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${BORDER}`,
+                borderRadius: '0.5rem',
+                color: T_PRI,
+                fontSize: '1.6rem',
+                fontWeight: 400,
+                fontFamily: 'var(--font-serif)',
+                padding: '0.25rem 0.5rem',
+                marginTop: '0.25rem',
+                cursor: 'pointer',
+                outline: 'none',
+                maxWidth: '280px',
+              }}
+            >
+              {Object.values(MOCK_LAKES).map((lake) => (
+                <option key={lake.lake_id} value={lake.lake_id} style={{ background: '#111', color: '#fff', fontSize: '1rem' }}>
+                  {lake.name}
+                </option>
+              ))}
+            </select>
 
             <div style={{ fontSize: '0.6rem', fontFamily: 'Inter, monospace', color: T_DIM, marginTop: '0.35rem', letterSpacing: '0.06em' }}>
               {data.lake_id}

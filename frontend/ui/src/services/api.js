@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 const MOCK_DATA = {
   lake_id: "PDGL_THULAGI_01",
@@ -15,11 +15,17 @@ const MOCK_DATA = {
     historical_analog: "South Lonak 2023"
   },
   agent_traces: [
-    { agent: "Sentinel", step: 1, message: "Satellite NDWI scan complete. 18.5% expansion detected." },
-    { agent: "Environmental", step: 2, message: "Weather pattern anomalous. 210mm precip expected." },
-    { agent: "Risk Assessment", step: 3, message: "Risk score calculated: 84/100 (RED TIER)." },
-    { agent: "Skeptic", step: 4, message: "Verdict CONFIRMED based on 2 independent signals." },
-    { agent: "Report", step: 5, message: "Decision brief generated for downstream operators." }
+    { agent: "Sentinel Agent", step: 1, message: "Satellite NDWI scan complete. 18.5% expansion detected." },
+    { agent: "Weather Agent", step: 2, message: "Weather pattern anomalous. 210mm precip expected." },
+    { agent: "Seismic Agent", step: 3, message: "3 seismic events detected within 200km radius." },
+    { agent: "NVIDIA Forecast Agent", step: 4, message: "FourCastNet NIM model run complete. 5-day forecast precip: 95.0mm." },
+    { agent: "Risk Fusion Agent", step: 5, message: "Calculated risk score: 84.0/100 | Tier: RED" },
+    { agent: "Skeptic Agent", step: 6, message: "IsolationForest Verdict: CONFIRMED" },
+    { agent: "GraphRAG Recall Agent", step: 7, message: "Neo4j traversal complete. Threatens Besisahar Village (pop: 12,480) & Besisahar Hydro." },
+    { agent: "Evacuation Router", step: 8, message: "Primary & secondary elevation corridors mapped." },
+    { agent: "Report Synthesizer", step: 9, message: "Emergency decision brief compiled for Gandaki emergency services." },
+    { agent: "Alert Dispatcher", step: 10, message: "Twilio SMS & Automated Voice Alerts queued." },
+    { agent: "Nepali TTS", step: 11, message: "ElevenLabs multilingual audio warning compiled." }
   ],
   spatial_data: {
     type: "FeatureCollection",
@@ -100,7 +106,7 @@ export async function fetchHealth() {
  */
 export async function runAnalysis(lakeId) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
     // 1. hit POST /simulate to flip state
     await fetch(`${API_BASE_URL}/simulate/${lakeId}?active=true`, { 

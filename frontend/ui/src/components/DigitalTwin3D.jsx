@@ -248,7 +248,7 @@ export default function DigitalTwin3D({ activeLake, spatialData, isCritical, onM
         source: 'glof-data',
         filter: ['==', 'layer_type', 'lake'],
         paint: {
-          'fill-color': '#06b6d4',
+          'fill-color': isCritical ? '#ef4444' : '#06b6d4',
           'fill-opacity': 0.65,
           'fill-outline-color': '#ffffff',
         },
@@ -327,6 +327,7 @@ export default function DigitalTwin3D({ activeLake, spatialData, isCritical, onM
     const vis = isCritical ? 'visible' : 'none';
     if (map.getLayer('impact-layer'))         map.setLayoutProperty('impact-layer', 'visibility', vis);
     if (map.getLayer('impact-boundary-line')) map.setLayoutProperty('impact-boundary-line', 'visibility', vis);
+    if (map.getLayer('lake-layer'))            map.setPaintProperty('lake-layer', 'fill-color', isCritical ? '#ef4444' : '#06b6d4');
   }, [isCritical]);
 
   // ─── ANIMATED RIVER DASHARRAY ─────────────────────────────────

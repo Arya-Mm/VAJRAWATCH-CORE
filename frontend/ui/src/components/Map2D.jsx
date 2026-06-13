@@ -13,7 +13,7 @@ export default function Map2D({ activeLake, isCritical, onMapClick, onError }) {
     let active = true;
     const fetchGeoData = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/risk/${activeLake.id}`);
+        const res = await fetch(`http://127.0.0.1:8000/risk/${activeLake.lake_id}`);
         if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
         
@@ -75,7 +75,7 @@ export default function Map2D({ activeLake, isCritical, onMapClick, onError }) {
               type="fill"
               filter={['==', ['get', 'layer_type'], 'lake']}
               paint={{
-                'fill-color': '#06B6D4',
+                'fill-color': isCritical ? '#EF4444' : '#06B6D4',
                 'fill-opacity': 0.8,
               }}
             />
