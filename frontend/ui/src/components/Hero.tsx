@@ -24,6 +24,55 @@ interface HeroProps {
   onEnterDashboard: () => void;
 }
 
+// ─── Spotlight Reveal Layer ──────────────────────────────
+function SpotlightLayer({ children }: { children: React.ReactNode }) {
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const target = useRef({ x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0 });
+  const rafRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    
+    const handleMouseMove = (e: MouseEvent) => { 
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        target.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      } else {
+        target.current = { x: e.clientX, y: e.clientY }; 
+      }
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+
+    const update = () => {
+      setPos(p => ({
+        x: p.x + (target.current.x - p.x) * 0.15,
+        y: p.y + (target.current.y - p.y) * 0.15
+      }));
+      rafRef.current = requestAnimationFrame(update);
+    };
+    rafRef.current = requestAnimationFrame(update);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return (
+    <div 
+      ref={containerRef}
+      className="absolute inset-0 z-10 animate-hero-reveal pointer-events-none"
+      style={{
+        WebkitMaskImage: `radial-gradient(circle 450px at ${pos.x}px ${pos.y}px, black 30%, transparent 80%)`,
+        maskImage: `radial-gradient(circle 450px at ${pos.x}px ${pos.y}px, black 30%, transparent 80%)`
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 // ─── Radar / Terrain Visualizer ──────────────────────────────
 function RadarViz() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -598,44 +647,6 @@ const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIX
 
 // ─── MAIN HERO ───────────────────────────────────────────────
 export default function Hero({ onEnterDashboard }: HeroProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const rafRef   = useRef<number>(0);
-
-  // Video fade loop
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.style.opacity = '0';
-    video.style.transition = 'opacity 0.8s ease';
-
-    const onCanPlay = () => { video.play().catch(() => {}); };
-    const onPlay    = () => { video.style.opacity = '1'; };
-    const onEnded   = () => {
-      video.style.opacity = '0';
-      setTimeout(() => { video.currentTime = 0; video.play().catch(() => {}); }, 200);
-    };
-
-    const tick = () => {
-      if (video.duration && !video.paused) {
-        const t = video.currentTime, d = video.duration, rem = d - t;
-        if (rem < 0.8 && rem > 0)  video.style.opacity = String(Math.max(0, rem / 0.8));
-        else if (t < 0.8)          video.style.opacity = String(Math.min(1, t / 0.8));
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    video.addEventListener('canplay', onCanPlay);
-    video.addEventListener('play', onPlay);
-    video.addEventListener('ended', onEnded);
-    rafRef.current = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      video.removeEventListener('canplay', onCanPlay);
-      video.removeEventListener('play', onPlay);
-      video.removeEventListener('ended', onEnded);
-    };
-  }, []);
 
   const maxW: React.CSSProperties = {
     maxWidth: '78rem', margin: '0 auto', padding: '0 2.5rem', width: '100%', boxSizing: 'border-box',
@@ -648,26 +659,6 @@ export default function Hero({ onEnterDashboard }: HeroProps) {
 
   return (
     <div className="vw-landing" style={{ background: BG, color: TEXT_PRI }}>
-
-      {/* ── FIXED VIDEO BACKGROUND ─────────────────────────── */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <video
-          ref={videoRef}
-          src={VIDEO_URL}
-          muted playsInline preload="auto"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0 }}
-        />
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: `linear-gradient(to bottom, ${BG} 0%, rgba(3,3,3,0.55) 35%, rgba(3,3,3,0.7) 65%, ${BG} 100%)`,
-        }} />
-        {/* Noise grain */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
-          opacity: 0.4,
-        }} />
-      </div>
 
       <div style={{ position: 'relative', zIndex: 10 }}>
 
@@ -743,124 +734,85 @@ export default function Hero({ onEnterDashboard }: HeroProps) {
         {/* ── ALERT TICKER ──────────────────────────────────── */}
         <AlertTicker />
 
-        {/* ── HERO SECTION ────────────────────────────────── */}
-        <section style={{ minHeight: '94vh', display: 'flex', alignItems: 'center', padding: '5rem 0 4rem' }}>
-          <div style={{ ...maxW, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
+        {/* ── NEW SPOTLIGHT HERO SECTION ── */}
+        <section className="relative w-full overflow-hidden" style={{ height: '94vh', background: 'transparent' }}>
+          
+          {/* Base Video */}
+          <div className="absolute inset-0 z-0 animate-hero-zoom pointer-events-none">
+            <video
+              src={VIDEO_URL}
+              autoPlay loop muted playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.3, filter: 'grayscale(100%)' }}
+            />
+            {/* Noise grain */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
+              opacity: 0.4,
+            }} />
+          </div>
 
-            {/* Left: Copy */}
-            <div>
-              {/* Eyebrow */}
-              <div className="vw-fade-up" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '2rem' }}>
-                <div className="vw-live-dot" />
-                <span style={{
-                  fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.16em',
-                  textTransform: 'uppercase', color: RED,
-                  fontFamily: 'Inter, monospace',
-                }}>
-                  21 PDGLs Monitored · Nepal Himalayas · DeerHack 2026
-                </span>
-              </div>
+          {/* Reveal Video */}
+          <SpotlightLayer>
+            <video
+              src={VIDEO_URL}
+              autoPlay loop muted playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover', mixBlendMode: 'color-dodge', filter: 'brightness(1.5) saturate(1.5)' }}
+            />
+          </SpotlightLayer>
 
-              {/* Headline */}
-              <h1
-                className="vw-fade-up-d1 font-serif-display"
-                style={{
-                  fontSize: 'clamp(3.25rem, 5.5vw, 5.5rem)',
-                  lineHeight: 0.92,
-                  letterSpacing: '-3px',
-                  color: TEXT_PRI,
-                  margin: 0,
-                  fontWeight: 400,
-                }}
-              >
-                21 Lakes.
-                <br />36 Hours.
-                <br /><span className="vw-gradient-text">One Warning.</span>
+          {/* Headline */}
+          <div className="absolute inset-0 z-20 flex flex-col justify-center items-center text-center pointer-events-none">
+            <div className="animate-hero-fade-up">
+              <h1 style={{ fontSize: 'clamp(4rem, 10vw, 9rem)', lineHeight: 0.95, letterSpacing: '-0.02em', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 0 }}>
+                <span className="font-playfair text-white" style={{ fontStyle: 'italic', opacity: 0.9 }}>Glaciers hold</span>
+                <span className="font-sans font-semibold text-white uppercase tracking-tighter">threats in silence</span>
               </h1>
-
-              {/* Subheadline */}
-              <p className="vw-fade-up-d2" style={{
-                fontSize: '1rem', color: TEXT_SEC, lineHeight: 1.8,
-                marginTop: '2rem', maxWidth: '30rem',
-                fontFamily: 'Inter, sans-serif',
-              }}>
-                Beyond the ice, we predict the flood. VajraWatch fuses satellite optics, seismic feeds, and XGBoost to give Himalayan communities the ultimate advantage:{' '}
-                <em style={{ color: 'rgba(255,255,255,0.5)', fontStyle: 'normal' }}>time.</em>
-              </p>
-
-              {/* Historical anchor */}
-              <div className="vw-fade-up-d2" style={{
-                marginTop: '1.25rem', padding: '0.875rem 1rem',
-                background: 'rgba(239,68,68,0.06)',
-                border: '1px solid rgba(239,68,68,0.15)',
-                borderLeft: '2px solid rgba(239,68,68,0.5)',
-                borderRadius: '0.5rem',
-                maxWidth: '30rem',
-              }}>
-                <p style={{
-                  fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)',
-                  lineHeight: 1.6, fontFamily: 'Inter, sans-serif', margin: 0,
-                }}>
-                  <span style={{ color: RED, fontWeight: 700 }}>Bhote Koshi, July 2025:</span>{' '}
-                  4 hydropower plants destroyed. 8% of Nepal's grid eliminated. $200M+ in losses.{' '}
-                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>36 hours of warning would have changed everything.</span>
-                </p>
-              </div>
-
-              {/* CTA */}
-              <div className="vw-fade-up-d3" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '2.75rem' }}>
-                <button
-                  onClick={onEnterDashboard}
-                  style={{
-                    padding: '1rem 2.5rem',
-                    fontSize: '0.9375rem', fontWeight: 600,
-                    background: TEXT_PRI, color: BG,
-                    border: 'none', borderRadius: '9999px',
-                    cursor: 'pointer', transition: 'transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease',
-                    fontFamily: 'Inter, sans-serif', letterSpacing: '-0.015em',
-                  }}
-                  onMouseEnter={e => { const b = e.currentTarget; b.style.transform = 'scale(1.05)'; b.style.boxShadow = '0 8px 40px rgba(255,255,255,0.18)'; }}
-                  onMouseLeave={e => { const b = e.currentTarget; b.style.transform = 'scale(1)'; b.style.boxShadow = 'none'; }}
-                >
-                  Enter Live Map
-                </button>
-
-                <button
-                  onClick={() => handleNavClick('#science')}
-                  style={{
-                    padding: '1rem 1.75rem',
-                    fontSize: '0.875rem', fontWeight: 500,
-                    background: 'transparent', color: TEXT_SEC,
-                    border: `1px solid ${BORDER}`, borderRadius: '9999px',
-                    cursor: 'pointer', transition: 'color 0.2s, border-color 0.2s',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                  onMouseEnter={e => { const b = e.currentTarget; b.style.color = TEXT_PRI; b.style.borderColor = 'rgba(255,255,255,0.15)'; }}
-                  onMouseLeave={e => { const b = e.currentTarget; b.style.color = TEXT_SEC; b.style.borderColor = BORDER; }}
-                >
-                  See the Science
-                </button>
-              </div>
-
-              {/* Trust indicators */}
-              <div className="vw-fade-up-d4" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '2rem' }}>
-                {[
-                  { val: '87%', label: 'Model Precision' },
-                  { val: '10ms', label: 'Inference Time' },
-                  { val: '36h', label: 'Warning Window' },
-                ].map(({ val, label }) => (
-                  <div key={label} style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.125rem', fontWeight: 800, color: TEXT_PRI, letterSpacing: '-0.04em', fontFamily: 'Inter, sans-serif' }}>{val}</div>
-                    <div style={{ fontSize: '0.625rem', color: TEXT_SEC, fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginTop: '0.1rem' }}>{label}</div>
-                  </div>
-                ))}
-              </div>
             </div>
+          </div>
 
-            {/* Right: Radar visualization */}
-            <div className="vw-fade-in-d1">
-              <RadarViz />
-            </div>
+          {/* Bottom Left Copy */}
+          <div className="absolute bottom-12 left-12 z-20 animate-hero-fade-up pointer-events-none" style={{ animationDelay: '0.4s', width: '22rem' }}>
+            <p className="font-sans text-sm font-light leading-relaxed text-white" style={{ opacity: 0.6 }}>
+              Every glacial lake holds a chapter of our planet's changing climate, silently swelling behind fragile moraine dams in the high Himalayas.
+            </p>
+          </div>
+
+          {/* Bottom Right CTA */}
+          <div className="absolute bottom-12 right-12 z-20 flex flex-col items-end animate-hero-fade-up" style={{ animationDelay: '0.6s' }}>
+            <p className="font-sans text-sm font-light leading-relaxed text-white text-right mb-6" style={{ opacity: 0.6, width: '22rem' }}>
+              Our AI-powered command center monitors 21 high-risk lakes in real-time, predicting Glacial Lake Outburst Floods before they strike.
+            </p>
+            <button 
+              onClick={onEnterDashboard}
+              style={{
+                position: 'relative', overflow: 'hidden', padding: '1rem 2.5rem',
+                background: '#FFFFFF', color: '#000000', border: 'none', cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.1em', pointerEvents: 'auto'
+              }}
+              onMouseEnter={e => {
+                const overlay = e.currentTarget.querySelector('.hover-overlay') as HTMLElement;
+                const text = e.currentTarget.querySelector('.btn-text') as HTMLElement;
+                if (overlay) overlay.style.transform = 'translateY(0)';
+                if (text) text.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={e => {
+                const overlay = e.currentTarget.querySelector('.hover-overlay') as HTMLElement;
+                const text = e.currentTarget.querySelector('.btn-text') as HTMLElement;
+                if (overlay) overlay.style.transform = 'translateY(100%)';
+                if (text) text.style.color = '#000000';
+              }}
+            >
+              <span className="btn-text" style={{ position: 'relative', zIndex: 10, transition: 'color 0.3s' }}>Enter Command Center</span>
+              <div 
+                className="hover-overlay"
+                style={{
+                  position: 'absolute', inset: 0, background: '#000000',
+                  transform: 'translateY(100%)', transition: 'transform 0.3s ease-in-out'
+                }} 
+              />
+            </button>
           </div>
         </section>
 

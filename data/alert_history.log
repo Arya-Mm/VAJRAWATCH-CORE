@@ -1,1 +1,2 @@
 {"timestamp": "2026-06-13T17:50:45.504567", "lake_id": "PDGL_THULAGI_01", "tier": "RED", "risk_score": 99.3, "contacts": [{"name": "Local Authority", "phone": "+15551230001", "email": "authority@example.com"}, {"name": "Dam Operator", "phone": "+15551230002", "email": "damops@example.com"}, {"name": "Community Leader", "phone": "+15551230003", "email": "leader@example.com"}]}
+{"timestamp": "2026-06-13T18:03:49.673260", "lake_id": "PDGL_MOCK_17", "tier": "RED", "risk_score": 99.3, "contacts": []}
