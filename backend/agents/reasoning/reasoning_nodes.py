@@ -83,8 +83,7 @@ def graph_rag_node(state: dict) -> dict:
     query = """
     MATCH (l:GlacialLake {id: $lake_id})-[:THREATENS]->(v:Village)
     MATCH (l)-[:THREATENS]->(infra:Infrastructure)
-    MATCH (similar:GlacialLake)-[:SIMILAR_TO]->(l)
-    MATCH (e:GLOFEvent)-[:ORIGINATED_FROM]->(similar)
+    MATCH (e:GLOFEvent)-[:SIMILAR_TO]->(l)
     RETURN v.name as village, v.population as pop, 
            infra.name as infrastructure, infra.value_usd as value,
            e.name as analog_event, e.deaths as historical_deaths
