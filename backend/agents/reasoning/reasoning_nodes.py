@@ -23,13 +23,20 @@ def risk_fusion_node(state: dict) -> dict:
         
         # Inference
         prob = model.predict_proba(df)[0][1]
-        score = round(prob * 100, 1)
+        score = round(float(prob) * 100, 1)
         tier = "RED" if score >= 80 else "YELLOW" if score >= 50 else "GREEN"
         
         # SHAP Drivers
         shap_values = explainer.shap_values(df)
         top_indices = np.argsort(np.abs(shap_values[0]))[::-1][:3]
-        top_drivers = [{"feature": ALL_FEATURES[i], "contribution": round(float(shap_values[0][i]), 2), "value": state["raw_data"][ALL_FEATURES[i]]} for i in top_indices]
+        top_drivers = [
+            {
+                "feature": ALL_FEATURES[i],
+                "contribution": round(float(shap_values[0][i]), 2),
+                "value": float(state["raw_data"][ALL_FEATURES[i]])
+            }
+            for i in top_indices
+        ]
         
         state["risk_result"] = {"risk_score": score, "risk_tier": tier, "top_drivers": top_drivers}
         state["agent_trace"].append({"agent": "Risk Fusion Agent", "status": f"XGBoost Score: {score}/100 | Tier: {tier}"})
