@@ -1,0 +1,17 @@
+[
+  {
+    "lake_id": "PDGL_THULAGI_01",
+    "contacts": [
+      { "name": "Local Authority", "phone": "+15551230001", "email": "authority@example.com" },
+      { "name": "Dam Operator", "phone": "+15551230002", "email": "damops@example.com" },
+      { "name": "Community Leader", "phone": "+15551230003", "email": "leader@example.com" }
+    ]
+  },
+  {
+    "lake_id": "PDGL_IMJA_02",
+    "contacts": [
+      { "name": "Local Authority", "phone": "+15551230011", "email": "authority_imja@example.com" },
+      { "name": "Dam Operator", "phone": "+15551230012", "email": "damops_imja@example.com" }
+    ]
+  }
+]
