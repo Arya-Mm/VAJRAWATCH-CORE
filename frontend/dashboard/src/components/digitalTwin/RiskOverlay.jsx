@@ -1,51 +1,25 @@
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
+// Risk color helpers — used only when backend returns a valid tier
+export function riskColor(tier) {
+  if (tier === "RED") return "#EF4444";
+  if (tier === "ORANGE") return "#F97316";
+  if (tier === "YELLOW") return "#EAB308";
+  if (tier === "GREEN") return "#22C55E";
+  return "#334155";
+}
 
-export default function RiskOverlay() {
-  const overlayRef = useRef(null);
+export function tierClass(tier) {
+  if (tier === "RED") return "red";
+  if (tier === "ORANGE") return "orange";
+  if (tier === "YELLOW") return "yellow";
+  if (tier === "GREEN") return "green";
+  return "";
+}
 
-  useFrame((state) => {
-    if (!overlayRef.current) return;
-
-    // Slow rotation to simulate active geospatial HUD scan
-    overlayRef.current.rotation.z = state.clock.getElapsedTime() * 0.06;
-  });
-
-  return (
-    <group ref={overlayRef} position={[0, 0.12, 0]}>
-      {/* 1. Risk Ring (Red - 1.4m scale radius) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.4, 1.45, 64]} />
-        <meshBasicMaterial
-          color="#ef4444"
-          side={THREE.DoubleSide}
-          transparent
-          opacity={0.75}
-        />
-      </mesh>
-
-      {/* 2. Impact Ring (Orange - 3.2m scale radius) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[3.2, 3.25, 64]} />
-        <meshBasicMaterial
-          color="#f97316"
-          side={THREE.DoubleSide}
-          transparent
-          opacity={0.6}
-        />
-      </mesh>
-
-      {/* 3. Monitoring Ring (Green - 6.5m scale radius) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[6.5, 6.54, 64]} />
-        <meshBasicMaterial
-          color="#10b981"
-          side={THREE.DoubleSide}
-          transparent
-          opacity={0.4}
-        />
-      </mesh>
-    </group>
-  );
+// Map geographic coordinates to SVG canvas pixels
+// Himalayan coverage: 76–102°E, 26–37°N
+export function lngToX(lng, w = 800) {
+  return ((lng - 76) / (102 - 76)) * w;
+}
+export function latToY(lat, h = 520) {
+  return h - ((lat - 26) / (37 - 26)) * h;
 }

@@ -1,3 +1,22 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// VISUAL FLOW RENDERING — NOT A HYDRAULIC SIMULATION
+// ─────────────────────────────────────────────────────────────────────────────
+// Particles use Math.random() for stochastic positional scatter. This is
+// intentional and correct for visual aesthetics, but it has NO physical basis.
+//
+// Do NOT present this component as flood routing, hydraulic modelling, or
+// scientific simulation output in demos, reports, or public communications.
+//
+// Correct framing: "Downstream flow visualization rendering."
+// Incorrect framing: "This is our flood simulation."
+//
+// Real hydraulic simulation would require:
+//   • A real DEM (SRTM / Copernicus GLO-30)
+//   • Manning's equation for open-channel flow
+//   • A numerical solver (e.g., HEC-RAS, LISFLOOD-FP, or custom SPH)
+//   • Time-stepped discharge data from backend hydrological model
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';

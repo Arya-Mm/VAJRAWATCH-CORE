@@ -20,7 +20,7 @@ function RunAnalysisButton() {
       aria-busy={isLoading}
     >
       <span className="run-analysis-btn__label">
-        {isLoading ? 'Analyzing…' : 'Run Analysis'}
+        {isLoading ? 'Analyzing...' : 'Run Analysis'}
       </span>
     </button>
   );

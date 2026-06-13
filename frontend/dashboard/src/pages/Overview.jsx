@@ -1,148 +1,176 @@
-/**
- * Overview — Phase 4
- * Adds:
- *   - AlertBanner inside AnimatePresence (shown when critical)
- *   - DemoMode button in header
- *   - LIVE pulse dot in header
- *   - ErrorBoundary wrapping each intel section
- *   - is-critical class on hero-panel for glow CSS
- */
-
-import { motion, AnimatePresence } from 'framer-motion';
-
-import useLakeStore         from '../store/useLakeStore';
+import useLakeStore, { getDisplayStatus, getSelectedLake } from '../store/useLakeStore';
 import ThreatMonitoringZone from '../components/ThreatMonitoringZone';
-import RiskGauge            from '../components/RiskGauge';
-import TopDrivers           from '../components/TopDrivers';
-import ImpactPanel          from '../components/ImpactPanel';
-import AlertBanner          from '../components/AlertBanner';
-import ErrorBoundary        from '../components/ErrorBoundary';
-import AlertConsole         from '../components/AlertConsole';
-import PortfolioView        from '../components/PortfolioView';
-import CrossLakeComparison  from '../components/CrossLakeComparison';
+import RiskGauge from '../components/RiskGauge';
+import TopDrivers from '../components/TopDrivers';
+import ImpactPanel from '../components/ImpactPanel';
+import AlertConsole from '../components/AlertConsole';
+import ErrorBoundary from '../components/ErrorBoundary';
+import LakeSelector from '../components/LakeSelector';
+import RunAnalysisButton from '../components/RunAnalysisButton';
 
+function EmptyDrawerState({ label = 'No Data Available' }) {
+  return <div className="drawer-empty">{label}</div>;
+}
 
-function Overview() {
-  const riskScore     = useLakeStore(s => s.riskScore);
-  const riskTier      = useLakeStore(s => s.riskTier);
-  const topDrivers    = useLakeStore(s => s.topDrivers);
-  const impactData    = useLakeStore(s => s.impactData);
-  const analysisState = useLakeStore(s => s.analysisState);
+function CommandDrawer({ title, children }) {
+  return (
+    <details className="command-drawer">
+      <summary>{title}</summary>
+      <div className="command-drawer__body">{children}</div>
+    </details>
+  );
+}
 
-  const intelViewMode = useLakeStore(s => s.intelViewMode);
-  const setIntelViewMode = useLakeStore(s => s.setIntelViewMode);
+function LakeRegistry({ lakes }) {
+  return (
+    <div className="registry-list">
+      {lakes.map((lake) => (
+        <div key={lake.lakeId} className="registry-row">
+          <span className="registry-row__name">{lake.name}</span>
+          <span className="registry-row__meta">{lake.region}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  const isLoading  = analysisState === 'loading';
-  const isCritical = analysisState === 'critical';
+function LogList({ items }) {
+  if (!items?.length) return <EmptyDrawerState />;
 
   return (
-    <div className="dashboard">
-
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <header className={`dashboard-header status--${riskTier.toLowerCase()}`}>
-
-        {/* Brand — live dot + wordmark */}
-        <div className="header-brand">
-          <motion.span
-            className="header-live-dot"
-            animate={{ opacity: [1, 0.15, 1] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-            aria-label="Live monitoring active"
-          />
-          <span className="wordmark">VAJRAWATCH</span>
+    <div className="log-list">
+      {items.map((item, index) => (
+        <div key={`${item.time ?? 'log'}-${index}`} className="log-list__row">
+          <span className="log-list__time">{item.time ?? '--'}</span>
+          <span className="log-list__text">{item.message ?? item.msg ?? String(item)}</span>
         </div>
+      ))}
+    </div>
+  );
+}
 
-        {/* Controls — monitoring stat */}
-        <div className="header-controls">
-          <div className="header-stat">
-            <span className="header-stat__value">MONITORING: 47 LAKES <span className="header-stat__sep">//</span> ACTIVE ALERTS: 4</span>
-          </div>
+function AgentLogList({ agents }) {
+  if (!agents?.length) return <EmptyDrawerState />;
+
+  return (
+    <div className="agent-log-list">
+      {agents.map((agent, index) => (
+        <div key={`${agent.name ?? 'agent'}-${index}`} className="agent-log-row">
+          <span>{agent.name ?? 'Agent'}</span>
+          <span>{agent.decision ?? agent.state ?? 'No Data'}</span>
         </div>
+      ))}
+    </div>
+  );
+}
 
+function IntelligenceText({ result, analysisState }) {
+  if (analysisState === 'offline') return <EmptyDrawerState label="Backend Offline" />;
+  if (analysisState !== 'complete') return <EmptyDrawerState label="Awaiting Analysis" />;
+  if (!result?.evidence && !result?.reasoning) return <EmptyDrawerState />;
+
+  return (
+    <div className="intelligence-text">
+      {result.evidence && (
+        <p>
+          <span>Evidence</span>
+          {result.evidence}
+        </p>
+      )}
+      {result.reasoning && (
+        <p>
+          <span>Reasoning</span>
+          {result.reasoning}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Overview() {
+  const selectedLake = useLakeStore(getSelectedLake);
+  const lakesList = useLakeStore((s) => s.lakesList);
+  const analysisState = useLakeStore((s) => s.analysisState);
+  const analysisResult = useLakeStore((s) => s.analysisResult);
+  const systemStatus = useLakeStore(getDisplayStatus);
+
+  return (
+    <div className="eoc-shell">
+      <header className="eoc-header">
+        <div className="eoc-wordmark">VAJRAWATCH</div>
+        <div className="eoc-header__items" aria-label="System summary">
+          <span>System Status: {systemStatus}</span>
+          <span>47 Lakes Monitored</span>
+          <span>Regional Breakdown</span>
+        </div>
       </header>
 
-      {/* ── Alert Banner — Peak-End Rule ───────────────────────── */}
-      <AnimatePresence>
-        {isCritical && <AlertBanner key="alert-banner" />}
-      </AnimatePresence>
-
-      {/* ── Body — Left/Right Split mission control ───────────────────── */}
-      <div className="dashboard-body">
-
-        {/* Left Column — TMZ + Timeline + AlertConsole */}
-        <div className={`left-column${isCritical ? ' is-critical' : ''}`}>
-          <div className="left-column-top">
+      <div className="eoc-body">
+        <main className="eoc-map-panel">
+          <ErrorBoundary>
             <ThreatMonitoringZone />
-          </div>
-          <div className="left-column-bottom">
-            <ErrorBoundary>
-              <AlertConsole />
-            </ErrorBoundary>
-          </div>
-        </div>
+          </ErrorBoundary>
+        </main>
 
-        {/* Right Column — Intel Panels */}
-        <div className="right-column">
+        <aside className="eoc-sidebar" aria-label="Operations sidebar">
+          <section className="sidebar-section selected-lake-card">
+            <div className="section-heading">Selected Lake</div>
+            <LakeSelector />
+            <div className="selected-lake-meta">
+              <span>{selectedLake.lakeId}</span>
+              <span>{selectedLake.region}</span>
+              <span>{selectedLake.coordinates.lat} / {selectedLake.coordinates.lng}</span>
+              <span>Elevation {selectedLake.coordinates.elevation}</span>
+            </div>
+          </section>
 
-          <div className="intel-toggle-bar">
-            <button
-              type="button"
-              className={`intel-toggle-btn ${intelViewMode === 'single' ? 'is-active' : ''}`}
-              onClick={() => setIntelViewMode('single')}
-            >
-              LAKE INTELLIGENCE
-            </button>
-            <button
-              type="button"
-              className={`intel-toggle-btn ${intelViewMode === 'regional' ? 'is-active' : ''}`}
-              onClick={() => setIntelViewMode('regional')}
-            >
-              REGIONAL PORTFOLIO
-            </button>
-          </div>
+          <ErrorBoundary>
+            <RiskGauge
+              score={analysisResult?.riskScore}
+              tier={analysisResult?.riskTier}
+              analysisState={analysisState}
+            />
+          </ErrorBoundary>
 
-          <div className="right-column-content">
-            {intelViewMode === 'single' ? (
-              <>
-                <div className="intel-section">
-                  <ErrorBoundary>
-                    <RiskGauge score={riskScore} tier={riskTier} isLoading={isLoading} />
-                  </ErrorBoundary>
-                </div>
+          <ErrorBoundary>
+            <TopDrivers drivers={analysisResult?.topDrivers} analysisState={analysisState} />
+          </ErrorBoundary>
 
-                <div className="intel-section">
-                  <ErrorBoundary>
-                    <TopDrivers drivers={topDrivers} isLoading={isLoading} />
-                  </ErrorBoundary>
-                </div>
+          <ErrorBoundary>
+            <ImpactPanel impact={analysisResult?.impact} analysisState={analysisState} />
+          </ErrorBoundary>
 
-                <div className="intel-section">
-                  <ErrorBoundary>
-                    <ImpactPanel impact={impactData} isLoading={isLoading} />
-                  </ErrorBoundary>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="intel-section">
-                  <ErrorBoundary>
-                    <PortfolioView />
-                  </ErrorBoundary>
-                </div>
+          <ErrorBoundary>
+            <AlertConsole
+              analysisState={analysisState}
+              recommendedAction={analysisResult?.recommendedAction}
+            />
+          </ErrorBoundary>
 
-                <div className="intel-section">
-                  <ErrorBoundary>
-                    <CrossLakeComparison />
-                  </ErrorBoundary>
-                </div>
-              </>
-            )}
-          </div>
+          <section className="sidebar-section run-analysis-card">
+            <div className="section-heading">Run Analysis</div>
+            <RunAnalysisButton />
+          </section>
 
-        </div>
-
+          <section className="drawer-stack" aria-label="Collapsed intelligence drawers">
+            <CommandDrawer title="System Intelligence">
+              <IntelligenceText result={analysisResult} analysisState={analysisState} />
+            </CommandDrawer>
+            <CommandDrawer title="Lake Registry">
+              <LakeRegistry lakes={lakesList} />
+            </CommandDrawer>
+            <CommandDrawer title="Timeline">
+              {analysisState === 'loading' ? <EmptyDrawerState label="Awaiting Analysis" /> : <LogList items={analysisResult?.decisionLogs} />}
+            </CommandDrawer>
+            <CommandDrawer title="Agent Logs">
+              <AgentLogList agents={analysisResult?.agents} />
+            </CommandDrawer>
+            <CommandDrawer title="Trace Logs">
+              <LogList items={analysisResult?.decisionLogs} />
+            </CommandDrawer>
+          </section>
+        </aside>
       </div>
-
     </div>
   );
 }

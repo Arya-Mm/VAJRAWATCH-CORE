@@ -1,91 +1,41 @@
-/**
- * TopDrivers — Phase 4
- * Adds AnimatePresence skeleton ↔ data cross-fade.
- */
+function DriversEmpty({ analysisState }) {
+  const title = analysisState === 'offline' ? 'Backend Offline' : 'No Data Available';
+  const body = analysisState === 'awaiting'
+    ? 'Awaiting Analysis'
+    : 'Driver attribution was not returned.';
 
-import { motion, AnimatePresence } from 'framer-motion';
-
-const RANK_WEIGHTS = [87, 63, 45, 32, 20];
-
-function TopDriversSkeleton() {
   return (
-    <div className="top-drivers">
-      <p className="section-label">Top Risk Drivers</p>
-      <div className="drivers-list">
-        {[0, 1].map(i => (
-          <div key={i} className="driver-item">
-            <div className="skeleton skeleton--driver-row" />
-            <div className="skeleton skeleton--bar" />
-            <div className="skeleton skeleton--driver-footer" />
-          </div>
-        ))}
-      </div>
+    <div className="empty-state">
+      <span className="empty-state__title">{title}</span>
+      <span className="empty-state__body">{body}</span>
     </div>
   );
 }
 
-function DriversData({ drivers }) {
+export default function TopDrivers({ drivers = [], analysisState }) {
   return (
-    <div className="top-drivers">
-      <p className="section-label">Top Risk Drivers</p>
-      <div className="drivers-list">
-        {drivers.map((driver, i) => {
-          const weight = RANK_WEIGHTS[i] ?? 20;
-
-          return (
-            <div key={i} className="driver-item">
-              <div className="driver-header">
-                <span className="driver-rank" aria-label={`Rank ${i + 1}`}>{i + 1}</span>
-                <span className="driver-feature">{driver.feature}</span>
-                <span className="driver-value">{driver.value}</span>
-              </div>
-              <div
-                className="driver-bar-track"
-                role="progressbar"
-                aria-valuenow={weight}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div className="driver-bar-fill" style={{ width: `${weight}%` }} />
-              </div>
-              <div className="driver-footer">
-                <span>Impact weight</span>
-                <span>{weight}%</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function TopDrivers({ drivers, isLoading }) {
-  return (
-    <AnimatePresence mode="wait">
-      {isLoading ? (
-        <motion.div
-          key="skeleton"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-        >
-          <TopDriversSkeleton />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="data"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          <DriversData drivers={drivers} />
-        </motion.div>
+    <section className="sidebar-section">
+      <div className="section-heading">Top Drivers</div>
+      {analysisState === 'loading' && (
+        <div className="empty-state">
+          <span className="empty-state__title">Awaiting Analysis</span>
+          <span className="empty-state__body">Driver model is running.</span>
+        </div>
       )}
-    </AnimatePresence>
+      {analysisState !== 'loading' && drivers.length === 0 && (
+        <DriversEmpty analysisState={analysisState} />
+      )}
+      {analysisState !== 'loading' && drivers.length > 0 && (
+        <div className="driver-list">
+          {drivers.map((driver, index) => (
+            <div key={`${driver.feature ?? driver.name}-${index}`} className="driver-row">
+              <span className="driver-row__rank">{index + 1}</span>
+              <span className="driver-row__name">{driver.feature ?? driver.name}</span>
+              <span className="driver-row__value">{driver.value ?? driver.score ?? 'No Data'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
-
-export default TopDrivers;

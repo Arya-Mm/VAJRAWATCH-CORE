@@ -15,11 +15,11 @@ export default function LakeSelector() {
       >
         {lakesList.map((lake) => (
           <option key={lake.lakeId} value={lake.lakeId}>
-            {lake.name} ({lake.riskTier})
+            {lake.name}
           </option>
         ))}
       </select>
-      <span className="lake-selector-arrow" aria-hidden="true">▼</span>
+      <span className="lake-selector-arrow" aria-hidden="true">v</span>
     </div>
   );
 }

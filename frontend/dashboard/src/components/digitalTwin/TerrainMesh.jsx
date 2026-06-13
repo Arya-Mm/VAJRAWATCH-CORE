@@ -1,3 +1,23 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// PROCEDURAL TERRAIN — NOT A REAL DEM
+// ─────────────────────────────────────────────────────────────────────────────
+// This terrain is generated from Math.sin / Math.cos functions seeded by a
+// deterministic hash of the lake ID. It is NOT sourced from any real elevation
+// dataset. Do NOT describe this as "real DEM terrain" in demos or reports.
+//
+// Real DEM sources that could replace this:
+//   • SRTM 30 m   — https://dwtkns.com/srtm30m/
+//   • Copernicus DEM GLO-30 — https://registry.opendata.aws/copernicus-dem/
+//   • ASTER GDEM v3 — https://earthdata.nasa.gov
+//   • ALOS AW3D30  — https://www.eorc.jaxa.jp/ALOS/en/aw3d30/
+//
+// Upgrade path: load a GeoTIFF heightmap with geotiff.js, read the elevation
+// array, and pass it as a DisplacementMap texture to meshStandardMaterial.
+//
+// Current accuracy class: topographic shape only (glacial basin + valley
+// channel morphology is plausible but entirely synthetic).
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import useLakeStore from '../../store/useLakeStore';
