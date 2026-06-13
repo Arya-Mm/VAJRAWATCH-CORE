@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.agents.orchestrator import GRAPH
+from backend.services.alert import dispatch_emergency_alert
 
 load_dotenv()
 
