@@ -96,5 +96,46 @@ def run_integration_test():
     for trace in result_prod.get("agent_trace", []):
         print(f" - [{trace['agent']}]: {trace['status']}")
 
+    # 3. Test case: Simulated Production Pipeline (is_demo_mode = False, is_simulation = True)
+    print("\n--- Running SIMULATED PRODUCTION Alert Pipeline (is_demo_mode = False, is_simulation = True) ---")
+    sim_state = {
+        "lake_id": "PDGL_THULAGI_01",
+        "raw_data": {
+            "ndwi_delta": 0.55,
+            "sar_backscatter_change": -3.5,
+            "precip_7d_mm": 0.0,
+            "temp_anomaly_c": 0.0,
+            "seismic_count_14d": 0,
+            "seismic_max_magnitude": 0.0,
+            "nvidia_precip_5day_mm": 0.0,
+            "lake_area_km2": 0.52
+        },
+        "risk_result": {},
+        "graph_context": "",
+        "skeptic_verdict": "",
+        "evacuation_route": "",
+        "audio_url": "",
+        "report": "",
+        "agent_trace": [],
+        "is_demo_mode": False,
+        "is_simulation": True,
+        "diagnostics": {},
+        "active_pipeline": ""
+    }
+
+    result_sim = GRAPH.invoke(sim_state)
+    
+    print("\nResulting SIMULATED State:")
+    print(f"Active Pipeline: {result_sim.get('active_pipeline')}")
+    print(f"Risk Score: {result_sim.get('risk_result', {}).get('risk_score')}")
+    print(f"Risk Tier: {result_sim.get('risk_result', {}).get('risk_tier')}")
+    print(f"Skeptic Verdict: {result_sim.get('skeptic_verdict')}")
+    print(f"Evacuation Route: {result_sim.get('evacuation_route')}")
+    print(f"Audio URL: {result_sim.get('audio_url')}")
+    print(f"Report Brief: {result_sim.get('report')}")
+    print("\nAgent Trace:")
+    for trace in result_sim.get("agent_trace", []):
+        print(f" - [{trace['agent']}]: {trace['status']}")
+
 if __name__ == "__main__":
     run_integration_test()
