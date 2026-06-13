@@ -37,7 +37,9 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+# In-memory flag for demo: active simulate mode forces Thulagi to RED
 _simulate_mode: dict[str, bool] = {}
+_last_alert_time: dict[str, datetime] = {}
 
 
 def generate_report_nvidia(
@@ -319,34 +321,39 @@ def get_risk(lake_id: str, demo_mode: bool = False) -> dict[str, Any]:
 
     # If RED tier, trigger emergency alerts and log history
     if risk.get("risk_tier") == "RED":
-        try:
-            contacts_path = ROOT_DIR / "data" / "contacts.json"
-            contacts = []
-            if contacts_path.exists():
-                with open(contacts_path) as f:
-                    all_contacts = json.load(f)
-                    contacts = [c["contacts"] for c in all_contacts if c.get("lake_id") == lake_id]
-                    contacts = [item for sublist in contacts for item in sublist]
-            dispatch_emergency_alert(
-                contacts=contacts,
-                lake_name="Thulagi Lake",
-                tier=risk.get("risk_tier"),
-                risk_score=risk.get("risk_score"),
-                evacuation_plan=result.get("evacuation_route", ""),
-            )
-            history_path = ROOT_DIR / "data" / "alert_history.log"
-            os.makedirs(history_path.parent, exist_ok=True)
-            with open(history_path, "a") as log_f:
-                entry = {
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "lake_id": lake_id,
-                    "tier": risk.get("risk_tier"),
-                    "risk_score": risk.get("risk_score"),
-                    "contacts": contacts,
-                }
-                log_f.write(json.dumps(entry) + "\n")
-        except Exception as e:
-            log.exception(f"Failed to dispatch emergency alert for {lake_id}: {e}")
+        now = datetime.utcnow()
+        last_alert = _last_alert_time.get(lake_id)
+        # Cooldown of 1 hour (3600 seconds) to prevent alert spam from the auto-monitor
+        if last_alert is None or (now - last_alert).total_seconds() > 3600:
+            _last_alert_time[lake_id] = now
+            try:
+                contacts_path = ROOT_DIR / "data" / "contacts.json"
+                contacts = []
+                if contacts_path.exists():
+                    with open(contacts_path) as f:
+                        all_contacts = json.load(f)
+                        contacts = [c["contacts"] for c in all_contacts if c.get("lake_id") == lake_id]
+                        contacts = [item for sublist in contacts for item in sublist]
+                dispatch_emergency_alert(
+                    contacts=contacts,
+                    lake_name="Thulagi Lake",
+                    tier=risk.get("risk_tier"),
+                    risk_score=risk.get("risk_score"),
+                    evacuation_plan=result.get("evacuation_route", ""),
+                )
+                history_path = ROOT_DIR / "data" / "alert_history.log"
+                os.makedirs(history_path.parent, exist_ok=True)
+                with open(history_path, "a") as log_f:
+                    entry = {
+                        "timestamp": now.isoformat(),
+                        "lake_id": lake_id,
+                        "tier": risk.get("risk_tier"),
+                        "risk_score": risk.get("risk_score"),
+                        "contacts": contacts,
+                    }
+                    log_f.write(json.dumps(entry) + "\n")
+            except Exception as e:
+                log.exception(f"Failed to dispatch emergency alert for {lake_id}: {e}")
 
     # Return both payloads; frontend decides which to use
     return {"full_payload": full_payload, "summary": summary}
