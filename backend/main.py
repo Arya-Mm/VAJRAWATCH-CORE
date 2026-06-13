@@ -289,67 +289,26 @@ def get_risk(lake_id: str, demo_mode: bool = False) -> dict[str, Any]:
         ]
     }
 
-# Build the full response payload
-full_payload = {
-    **risk,
-    "lake_id": lake_id,
-    "name": "Thulagi Lake",
-    "skeptic_verdict": result.get("skeptic_verdict", "MONITORING"),
-    "report": result.get("report", ""),
-    "agent_trace": result.get("agent_trace", []),
-    "audio_url": result.get("audio_url"),
-    "weather_source": weather["source"],
-    "evacuation_route": result.get("evacuation_route"),
-    "active_pipeline": result.get("active_pipeline", "LEAN"),
-    "impact": {
-        "population": 12480,
-        "hydropower_mw": 186,
-        "historical_analog": "South Lonak 2023",
-    },
-    "spatial_data": spatial_data,
-    "current_river_flow_m3s": current_river_flow_m3s,
-}
-
-# Summary payload for public users
-summary = {
-    "lake_id": lake_id,
-    "risk_tier": risk.get("risk_tier"),
-    "risk_score": risk.get("risk_score"),
-}
-
-# If RED tier, trigger emergency alerts and log history
-if risk.get("risk_tier") == "RED":
-    try:
-        contacts_path = ROOT_DIR / "data" / "contacts.json"
-        contacts = []
-        if contacts_path.exists():
-            with open(contacts_path) as f:
-                all_contacts = json.load(f)
-                contacts = [c["contacts"] for c in all_contacts if c.get("lake_id") == lake_id]
-                contacts = [item for sublist in contacts for item in sublist]
-        dispatch_emergency_alert(
-            contacts=contacts,
-            lake_name="Thulagi Lake",
-            tier=risk.get("risk_tier"),
-            risk_score=risk.get("risk_score"),
-            evacuation_plan=result.get("evacuation_route", ""),
-        )
-        history_path = ROOT_DIR / "data" / "alert_history.log"
-        os.makedirs(history_path.parent, exist_ok=True)
-        with open(history_path, "a") as log_f:
-            entry = {
-                "timestamp": datetime.utcnow().isoformat(),
-                "lake_id": lake_id,
-                "tier": risk.get("risk_tier"),
-                "risk_score": risk.get("risk_score"),
-                "contacts": contacts,
-            }
-            log_f.write(json.dumps(entry) + "\n")
-    except Exception as e:
-        log.exception(f"Failed to dispatch emergency alert for {lake_id}: {e}")
-
-# Return both payloads; frontend decides which to use
-return {"full_payload": full_payload, "summary": summary}
+    # Build the full response payload
+    full_payload = {
+        **risk,
+        "lake_id": lake_id,
+        "name": "Thulagi Lake",
+        "skeptic_verdict": result.get("skeptic_verdict", "MONITORING"),
+        "report": result.get("report", ""),
+        "agent_trace": result.get("agent_trace", []),
+        "audio_url": result.get("audio_url"),
+        "weather_source": weather["source"],
+        "evacuation_route": result.get("evacuation_route"),
+        "active_pipeline": result.get("active_pipeline", "LEAN"),
+        "impact": {
+            "population": 12480,
+            "hydropower_mw": 186,
+            "historical_analog": "South Lonak 2023",
+        },
+        "spatial_data": spatial_data,
+        "current_river_flow_m3s": current_river_flow_m3s,
+    }
 
     # Summary payload for public users
     summary = {
