@@ -1,12 +1,15 @@
 [
   {
-    "name": "John Doe",
-    "phone": "+15551234567",
-    "email": "john.doe@example.com"
+    "lake_id": "PDGL_THULAGI_01",
+    "contacts": [
+      { "name": "John Doe", "phone": "+15551234567", "email": "john.doe@example.com" },
+      { "name": "Jane Smith", "phone": "+15557654321", "email": "jane.smith@example.com" }
+    ]
   },
   {
-    "name": "Jane Smith",
-    "phone": "+15557654321",
-    "email": "jane.smith@example.com"
+    "lake_id": "PDGL_IMJA_02",
+    "contacts": [
+      { "name": "Alice Patel", "phone": "+15559876543", "email": "alice.patel@example.com" }
+    ]
   }
 ]
