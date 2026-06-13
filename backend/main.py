@@ -219,6 +219,21 @@ def get_risk(lake_id: str, demo_mode: bool = False) -> dict[str, Any]:
     with open(mock_data_path) as f:
         data = json.load(f)
 
+    # Deterministically alter the data based on lake_id so they don't all look identical
+    import hashlib
+    h = int(hashlib.md5(lake_id.encode('utf-8')).hexdigest(), 16)
+    jitter = (h % 100) / 100.0  # 0.0 to 1.0
+    
+    if lake_id != "PDGL_THULAGI_01":
+        # Modify the data randomly but deterministically
+        data["ndwi_delta"] = max(0.01, data.get("ndwi_delta", 0.1) * (0.5 + jitter))
+        data["sar_backscatter_change"] = data.get("sar_backscatter_change", -1.0) * (0.2 + jitter * 1.5)
+        data["lake_area_km2"] = data.get("lake_area_km2", 0.4) * (0.8 + jitter * 0.4)
+        if jitter < 0.3:
+            data["precip_7d_mm"] = 0.0
+            data["seismic_count_14d"] = 0
+            data["seismic_max_magnitude"] = 0.0
+
     if _simulate_mode.get(lake_id):
         data["ndwi_delta"] = 0.45
         data["precip_7d_mm"] = 350.0
