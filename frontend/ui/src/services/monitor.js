@@ -36,9 +36,10 @@ class MonitorService {
         
         if (data.risk_tier === 'RED') {
           console.warn(`[MonitorService] RED ALERT DETECTED on ${lakeId}!`);
-          window.dispatchEvent(new CustomEvent('vajrawatch-emergency-alert', { 
-            detail: { data } 
-          }));
+          // Note: Automatic alert dispatch disabled per user request
+          // window.dispatchEvent(new CustomEvent('vajrawatch-emergency-alert', { 
+          //   detail: { data } 
+          // }));
         }
       } catch (err) {
         console.error(`[MonitorService] Error checking lake ${lakeId}:`, err);
