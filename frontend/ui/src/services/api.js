@@ -71,8 +71,8 @@ function normalizeResponse(data) {
       step: i + 1,
       message: trace.status
     })) : MOCK_DATA.agent_traces,
-    // Provide absolute URL for audio if relative path is returned
-    audio_url: data.audio_url ? `${API_BASE_URL}${data.audio_url}` : null,
+    // Provide absolute URL for audio if relative path is returned (keeping base64 data URIs as is)
+    audio_url: data.audio_url ? (data.audio_url.startsWith('data:') ? data.audio_url : `${API_BASE_URL}${data.audio_url}`) : null,
     isMock: false
   };
 }
@@ -100,12 +100,17 @@ export async function fetchHealth() {
  */
 export async function runAnalysis(lakeId) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {
-    // Phase 3 constraint: hit POST /simulate to flip state
-    const response = await fetch(`${API_BASE_URL}/simulate/${lakeId}`, { 
+    // 1. hit POST /simulate to flip state
+    await fetch(`${API_BASE_URL}/simulate/${lakeId}?active=true`, { 
       method: 'POST',
       signal: controller.signal 
+    });
+    
+    // 2. Fetch the actual risk assessment data
+    const response = await fetch(`${API_BASE_URL}/risk/${lakeId}`, {
+      signal: controller.signal
     });
     clearTimeout(timeoutId);
     if (!response.ok) throw new Error(`API returned status ${response.status}`);
@@ -135,6 +140,6 @@ export const fetchRiskData = runAnalysis;
  */
 export function fetchAudioWarning(audioPath) {
   if (!audioPath) return null;
-  if (audioPath.startsWith('http')) return audioPath;
+  if (audioPath.startsWith('http') || audioPath.startsWith('data:')) return audioPath;
   return `${API_BASE_URL}${audioPath}`;
 }
