@@ -1,0 +1,292 @@
+/* ============================================================
+   VAJRAWATCH V4 — LANDING PAGE ADVANCED ANIMATION SYSTEM
+   ============================================================ */
+
+/* ── Keyframes ────────────────────────────────────────────── */
+
+@keyframes vw-fade-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vw-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes vw-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); opacity: 1; }
+  50%       { box-shadow: 0 0 40px 8px rgba(239, 68, 68, 0.25); opacity: 0.85; }
+}
+
+@keyframes vw-ring-expand {
+  0%   { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+@keyframes vw-scan {
+  from { top: -2px; }
+  to   { top: 100%; }
+}
+
+@keyframes vw-data-stream {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  10%  { opacity: 1; transform: translateY(0); }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes vw-counter {
+  from { transform: scaleY(0); transform-origin: bottom; }
+  to   { transform: scaleY(1); transform-origin: bottom; }
+}
+
+@keyframes vw-satellite-orbit {
+  from { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+}
+
+@keyframes vw-satellite-orbit-2 {
+  from { transform: rotate(120deg) translateX(90px) rotate(-120deg); }
+  to   { transform: rotate(480deg) translateX(90px) rotate(-480deg); }
+}
+
+@keyframes vw-satellite-orbit-3 {
+  from { transform: rotate(240deg) translateX(72px) rotate(-240deg); }
+  to   { transform: rotate(600deg) translateX(72px) rotate(-600deg); }
+}
+
+@keyframes vw-terrain-pan {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes vw-alert-flash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+@keyframes vw-bar-fill {
+  from { width: 0%; }
+  to   { width: var(--target-width); }
+}
+
+@keyframes vw-number-count {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vw-border-glow {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
+  50%       { border-color: rgba(239, 68, 68, 0.7); }
+}
+
+@keyframes vw-hud-blink {
+  0%, 90%, 100% { opacity: 1; }
+  95%            { opacity: 0; }
+}
+
+@keyframes vw-flow-down {
+  0%   { stroke-dashoffset: 0; opacity: 0.8; }
+  100% { stroke-dashoffset: -200; opacity: 0.2; }
+}
+
+@keyframes vw-radiate {
+  0%   { r: 6; opacity: 0.9; }
+  100% { r: 20; opacity: 0; }
+}
+
+@keyframes vw-particle {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  100% { transform: translate(var(--px), var(--py)) scale(0); opacity: 0; }
+}
+
+@keyframes vw-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes vw-typewriter {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+@keyframes vw-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes vw-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── Utility Animation Classes ─────────────────────────────── */
+.vw-fade-up          { animation: vw-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.vw-fade-up-d1       { animation: vw-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both; }
+.vw-fade-up-d2       { animation: vw-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
+.vw-fade-up-d3       { animation: vw-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both; }
+.vw-fade-up-d4       { animation: vw-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both; }
+.vw-fade-up-d5       { animation: vw-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.65s both; }
+.vw-fade-in          { animation: vw-fade-in 1.2s ease both; }
+.vw-fade-in-d1       { animation: vw-fade-in 1.2s ease 0.3s both; }
+.vw-fade-in-d2       { animation: vw-fade-in 1.2s ease 0.6s both; }
+
+/* ── Landing Page Container ─────────────────────────────────── */
+.vw-landing {
+  background: #030303;
+  color: #FFFFFF;
+  font-family: 'Inter', -apple-system, sans-serif;
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+.vw-landing::-webkit-scrollbar       { width: 3px; }
+.vw-landing::-webkit-scrollbar-track { background: #030303; }
+.vw-landing::-webkit-scrollbar-thumb { background: #1c1c1c; border-radius: 2px; }
+
+/* ── Glassmorphism Panels ──────────────────────────────────── */
+.vw-glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1rem;
+}
+
+.vw-glass-red {
+  background: rgba(239, 68, 68, 0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 1rem;
+}
+
+/* ── HUD Element Styles ─────────────────────────────────────── */
+.vw-hud-tag {
+  font-family: 'Inter', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.vw-hud-tag-red {
+  font-family: 'Inter', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  color: #EF4444;
+  animation: vw-alert-flash 2s ease-in-out infinite;
+}
+
+/* ── Alert Pulse Ring ──────────────────────────────────────── */
+.vw-alert-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  animation: vw-ring-expand 2.5s ease-out infinite;
+  pointer-events: none;
+}
+
+/* ── Scan Line ─────────────────────────────────────────────── */
+.vw-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(239, 68, 68, 0.4), transparent);
+  animation: vw-scan 6s linear infinite;
+  pointer-events: none;
+}
+
+/* ── Live Pulse Dot ────────────────────────────────────────── */
+.vw-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #EF4444;
+  animation: vw-glow-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.vw-live-dot-green {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: vw-glow-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* ── Marquee Ticker ────────────────────────────────────────── */
+.vw-ticker-track {
+  display: flex;
+  gap: 0;
+  animation: vw-marquee 30s linear infinite;
+  white-space: nowrap;
+}
+
+.vw-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── Data Stream Lines ──────────────────────────────────────── */
+.vw-stream-line {
+  animation: vw-data-stream 4s ease-in-out infinite;
+}
+.vw-stream-line:nth-child(2) { animation-delay: 0.6s; }
+.vw-stream-line:nth-child(3) { animation-delay: 1.2s; }
+.vw-stream-line:nth-child(4) { animation-delay: 1.8s; }
+.vw-stream-line:nth-child(5) { animation-delay: 2.4s; }
+
+/* ── Gradient Text ─────────────────────────────────────────── */
+.vw-gradient-text {
+  background: linear-gradient(135deg, #EF4444 0%, #F97316 50%, #EF4444 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: vw-gradient-shift 3s ease infinite;
+}
+
+/* ── Stat Divider ──────────────────────────────────────────── */
+.vw-section-rule {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0.06) 80%, transparent);
+}
+
+/* ── Hover Lift ─────────────────────────────────────────────── */
+.vw-lift {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+.vw-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Noise Overlay ──────────────────────────────────────────── */
+.vw-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 1;
+}

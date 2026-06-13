@@ -1,212 +1,655 @@
-import { useEffect, useRef } from 'react';
+/**
+ * VAJRAWATCH V4 — LANDING PAGE (Hero.tsx)
+ * Cinematic dark-mode landing. Sections:
+ *   1. Hero      — Full-screen with animated terrain radar + data HUD
+ *   2. Incident  — Three GLOF events as stat cards (Von Restorff)
+ *   3. Science   — 4-step pipeline with animated connectors
+ *   4. Metrics   — Three "why buy" numbers
+ *   5. Demo CTA  — Final push into the dashboard
+ *   6. Footer
+ */
+import { useEffect, useRef, useState, useCallback } from 'react';
 import '../styles/fonts.css';
 import '../styles/theme.css';
+import '../styles/landing.css';
 
-const VIDEO_URL =
-  'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_083109_283f3553-e28f-428b-a723-d639c617eb2b.mp4';
+// ─── Constants ───────────────────────────────────────────────
+const BG        = '#030303';
+const TEXT_PRI  = '#FFFFFF';
+const TEXT_SEC  = '#6F6F6F';
+const BORDER    = 'rgba(255,255,255,0.06)';
+const RED       = '#EF4444';
 
 interface HeroProps {
   onEnterDashboard: () => void;
 }
 
-// ─── Shared token constants ─────────────────────────────────────────────────
-const BG       = '#050505';
-const TEXT_PRI = '#FFFFFF';
-const TEXT_SEC = '#6F6F6F';
-const BORDER   = 'rgba(255,255,255,0.07)';
+// ─── Radar / Terrain Visualizer ──────────────────────────────
+function RadarViz() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef    = useRef<number>(0);
 
-// ─── Terrain SVG – map visual ───────────────────────────────────────────────
-function TerrainViz() {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let t = 0;
+    const W = 480, H = 480;
+    canvas.width  = W;
+    canvas.height = H;
+
+    // Lake anchor point (Thulagi position on canvas)
+    const lx = 240, ly = 200;
+
+    // Static topographic contour rings
+    const rings: { cx: number; cy: number; r: number; a: number }[] = Array.from({ length: 10 }, (_, i) => ({
+      cx: lx + (Math.random() - 0.5) * 20,
+      cy: ly + (Math.random() - 0.5) * 20,
+      r: 20 + i * 22,
+      a: 0.03 + i * 0.003,
+    }));
+
+    // Particles flowing downstream
+    const particles: { x: number; y: number; speed: number; life: number; max: number }[] = [];
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: lx + (Math.random() - 0.5) * 20,
+        y: ly + Math.random() * 10,
+        speed: 0.3 + Math.random() * 0.6,
+        life: Math.random() * 200,
+        max: 120 + Math.random() * 80,
+      });
+    }
+
+    function draw() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, W, H);
+
+      // Background subtle gradient
+      const bg = ctx.createRadialGradient(lx, ly, 0, lx, ly, 260);
+      bg.addColorStop(0, 'rgba(239,68,68,0.04)');
+      bg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Topo contour lines
+      rings.forEach(({ cx, cy, r, a }) => {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * 0.6, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,255,255,${a})`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      });
+
+      // Radar sweep
+      const sweepAngle = (t * 0.012) % (Math.PI * 2);
+      const sweepGrad = ctx.createConicalGradient
+        ? ctx.createConicalGradient(lx, ly, sweepAngle)
+        : null;
+
+      // Draw sweep manually
+      ctx.save();
+      ctx.translate(lx, ly);
+      const sweepFan = ctx.createLinearGradient(0, 0, 130 * Math.cos(sweepAngle), 130 * Math.sin(sweepAngle));
+      sweepFan.addColorStop(0, 'rgba(239,68,68,0.18)');
+      sweepFan.addColorStop(1, 'rgba(239,68,68,0)');
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, 130, sweepAngle - 0.7, sweepAngle);
+      ctx.closePath();
+      ctx.fillStyle = sweepFan;
+      ctx.fill();
+      ctx.restore();
+
+      // Radar range rings
+      [50, 100, 130].forEach((r, i) => {
+        ctx.beginPath();
+        ctx.arc(lx, ly, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(239,68,68,${0.07 - i * 0.02})`;
+        ctx.lineWidth = 0.8;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // Cross-hairs
+      ctx.beginPath();
+      ctx.moveTo(lx - 150, ly); ctx.lineTo(lx + 150, ly);
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(lx, ly - 150); ctx.lineTo(lx, ly + 150);
+      ctx.stroke();
+
+      // Flow path (downstream channel)
+      const flowPath = [[lx, ly + 20], [lx + 8, ly + 60], [lx + 4, ly + 100], [lx + 12, ly + 140], [lx + 6, ly + 180], [lx + 14, ly + 230]];
+      ctx.beginPath();
+      ctx.moveTo(flowPath[0][0], flowPath[0][1]);
+      flowPath.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.strokeStyle = `rgba(239,68,68,${0.25 + 0.1 * Math.sin(t * 0.02)})`;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Downstream impact zone
+      ctx.beginPath();
+      ctx.moveTo(lx - 30, ly + 185);
+      ctx.quadraticCurveTo(lx, ly + 230, lx + 30, ly + 185);
+      ctx.lineTo(lx + 50, ly + 260);
+      ctx.quadraticCurveTo(lx, ly + 300, lx - 50, ly + 260);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(239,68,68,0.05)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(239,68,68,0.2)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Infrastructure dots in danger zone
+      [[lx + 5, ly + 220], [lx - 12, ly + 240], [lx + 18, ly + 255]].forEach(([x, y], i) => {
+        const pulse = Math.abs(Math.sin(t * 0.03 + i));
+        ctx.beginPath();
+        ctx.arc(x, y, 2.5 + pulse * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(249,115,22,${0.5 + pulse * 0.4})`;
+        ctx.fill();
+      });
+
+      // Particles flowing downstream
+      particles.forEach((p) => {
+        p.life += p.speed;
+        if (p.life > p.max) {
+          p.life = 0;
+          p.x = lx + (Math.random() - 0.5) * 16;
+          p.y = ly + 20;
+        }
+        const progress = p.life / p.max;
+        const px = p.x + 12 * progress;
+        const py = p.y + p.life;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(239,68,68,${(1 - progress) * 0.55})`;
+        ctx.fill();
+      });
+
+      // Lake polygon
+      const lakePoints = [[lx - 12, ly - 6], [lx, ly - 12], [lx + 14, ly - 8], [lx + 18, ly + 2], [lx + 8, ly + 10], [lx - 6, ly + 8], [lx - 14, ly + 2]];
+      ctx.beginPath();
+      ctx.moveTo(lakePoints[0][0], lakePoints[0][1]);
+      lakePoints.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.closePath();
+      const lakeFill = ctx.createRadialGradient(lx, ly, 0, lx, ly, 18);
+      lakeFill.addColorStop(0, `rgba(239,68,68,${0.35 + 0.1 * Math.sin(t * 0.025)})`);
+      lakeFill.addColorStop(1, 'rgba(239,68,68,0.12)');
+      ctx.fillStyle = lakeFill;
+      ctx.fill();
+      ctx.strokeStyle = RED;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Pulsing alert ring around lake
+      const ringAlpha = 0.5 - ((t * 0.015) % 1) * 0.5;
+      const ringR = 18 + ((t * 0.015) % 1) * 40;
+      ctx.beginPath();
+      ctx.arc(lx, ly, ringR, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(239,68,68,${ringAlpha})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const ringAlpha2 = 0.5 - (((t * 0.015) + 0.5) % 1) * 0.5;
+      const ringR2 = 18 + (((t * 0.015) + 0.5) % 1) * 40;
+      ctx.beginPath();
+      ctx.arc(lx, ly, ringR2, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(239,68,68,${ringAlpha2})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Lake center dot
+      ctx.beginPath();
+      ctx.arc(lx, ly, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = RED;
+      ctx.fill();
+
+      t++;
+      rafRef.current = requestAnimationFrame(draw);
+    }
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', maxWidth: '480px', margin: '0 auto' }}>
+      {/* Outer glow */}
+      <div style={{
+        position: 'absolute', inset: '-20px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Canvas */}
+      <div style={{
+        position: 'relative', width: '100%', aspectRatio: '1/1',
+        background: '#0a0a0a',
+        border: `1px solid ${BORDER}`,
+        borderRadius: '1rem',
+        overflow: 'hidden',
+      }}>
+        <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+
+        {/* HUD Overlays */}
+        <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <div className="vw-hud-tag">PDGL_THULAGI_01 · 28.538°N 84.393°E</div>
+          <div className="vw-hud-tag">SENTINEL-2 · SAR COMPOSITE · S1A</div>
+        </div>
+
+        <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', textAlign: 'right' }}>
+          <div style={{ fontSize: '0.55rem', color: TEXT_SEC, letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Inter, monospace', marginBottom: '0.1rem' }}>RISK INDEX</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: RED, letterSpacing: '-0.05em', lineHeight: 1, fontFamily: 'Inter, sans-serif' }}>84</div>
+          <div className="vw-hud-tag-red" style={{ display: 'inline-block', marginTop: '0.25rem' }}>● CRITICAL</div>
+        </div>
+
+        {/* Data stream (right side) */}
+        <div style={{ position: 'absolute', bottom: '3.5rem', right: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
+          {[
+            'NDWI Δ +18.5%',
+            'SAR −3.2 dB',
+            'Precip 210mm/7d',
+            'Seismic M3.1',
+          ].map((line, i) => (
+            <div key={i} className="vw-stream-line" style={{
+              fontSize: '0.55rem', color: `rgba(239,68,68,${0.4 + i * 0.1})`,
+              fontFamily: 'Inter, monospace', letterSpacing: '0.08em',
+              animationDelay: `${i * 0.8}s`,
+            }}>{line}</div>
+          ))}
+        </div>
+
+        {/* Bottom bar */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          background: 'rgba(0,0,0,0.8)', borderTop: `1px solid ${BORDER}`,
+          padding: '0.4rem 0.75rem',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, monospace' }}>
+            VajraWatch · Gandaki Province
+          </span>
+          <span style={{ fontSize: '0.6rem', color: RED, fontWeight: 700, letterSpacing: '0.08em', fontFamily: 'Inter, monospace' }}>
+            124,800 AT RISK · 186 MW
+          </span>
+        </div>
+      </div>
+
+      {/* Caption */}
+      <p style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.18)', marginTop: '0.75rem', textAlign: 'center', fontFamily: 'Inter, monospace', letterSpacing: '0.06em' }}>
+        Thulagi Lake · Gandaki, Nepal · Real-time GLOF Risk Monitor
+      </p>
+    </div>
+  );
+}
+
+// ─── Satellite Orbiter (Science Section) ─────────────────────
+function SatelliteOrbit() {
+  return (
+    <div style={{ position: 'relative', width: '200px', height: '200px', flexShrink: 0 }}>
+      {/* Earth/Lake center */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '36px', height: '36px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 40% 40%, rgba(239,68,68,0.6), rgba(239,68,68,0.15))',
+        border: '1px solid rgba(239,68,68,0.4)',
+      }} />
+
+      {/* Orbit rings */}
+      {[60, 90, 72].map((r, i) => (
+        <div key={i} style={{
+          position: 'absolute', top: '50%', left: '50%',
+          width: r * 2, height: r * 2,
+          marginLeft: -r, marginTop: -r,
+          borderRadius: '50%',
+          border: `1px solid rgba(255,255,255,${0.04 + i * 0.02})`,
+        }} />
+      ))}
+
+      {/* Satellites */}
+      {[
+        { animation: 'vw-satellite-orbit 8s linear infinite', color: '#60A5FA' },
+        { animation: 'vw-satellite-orbit-2 12s linear infinite', color: '#34D399' },
+        { animation: 'vw-satellite-orbit-3 10s linear infinite', color: '#FBBF24' },
+      ].map(({ animation, color }, i) => (
+        <div key={i} style={{
+          position: 'absolute', top: '50%', left: '50%',
+          marginTop: -3, marginLeft: -3,
+          width: 6, height: 6,
+          borderRadius: '50%',
+          background: color,
+          boxShadow: `0 0 8px ${color}`,
+          animation,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// ─── Ticker / Alert Bar ──────────────────────────────────────
+function AlertTicker() {
+  const items = [
+    '● GLOF ALERT — Thulagi Lake · Risk Score 84/100',
+    '● SENTINEL-2 PASS — 12 Jun 2026 14:00 UTC',
+    '● NDWI Delta +18.5% — Lake expansion confirmed',
+    '● XGBoost Engine — 87% precision · 10ms inference',
+    '● Downstream impact — 124,800 residents at risk',
+    '● Bhote Koshi 2025 — $200M damage · 4 plants destroyed',
+    '● ETA flood front — ~4 hours from trigger',
+    '● Nepali audio broadcast — Active',
+  ];
+  const text = items.join('          ');
+
   return (
     <div style={{
-      position: 'relative',
-      width: '100%',
-      aspectRatio: '4/3',
-      background: '#080808',
-      border: `1px solid ${BORDER}`,
-      borderRadius: '0.75rem',
+      borderTop: `1px solid ${BORDER}`,
+      borderBottom: `1px solid ${BORDER}`,
+      background: 'rgba(239,68,68,0.04)',
       overflow: 'hidden',
+      padding: '0.6rem 0',
     }}>
-      <svg viewBox="0 0 480 360" fill="none" xmlns="http://www.w3.org/2000/svg"
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+      <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+        <div className="vw-ticker-track">
+          {[text, text].map((t, i) => (
+            <span key={i} style={{
+              fontSize: '0.625rem', fontWeight: 600,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: 'rgba(239,68,68,0.65)', fontFamily: 'Inter, monospace',
+              paddingRight: '4rem',
+            }}>{t}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Topographic contour lines */}
-        {[0,1,2,3,4,5,6,7,8].map((i) => (
-          <path key={i}
-            d={`M${-30 + i*12},360 C${80 + i*18},${220 - i*14} ${200 + i*10},${130 - i*12} ${240},${100 - i*9} S${380 + i*10},${90 - i*6} ${520},${360}`}
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="1"
-            fill="none"
-          />
-        ))}
-
-        {/* River / outflow path */}
-        <path d="M238,108 C236,140 232,175 228,210 C224,245 226,275 230,360"
-          stroke="#EF4444"
-          strokeWidth="1.5"
-          strokeDasharray="5 4"
-          opacity="0.6"
-        />
-
-        {/* Lake polygon – filled red for critical state */}
-        <polygon
-          points="215,95 238,88 258,92 265,104 250,115 228,113 213,105"
-          fill="rgba(239,68,68,0.22)"
-          stroke="#EF4444"
-          strokeWidth="1.5"
-        />
-
-        {/* Impact boundary – dashed red zone downstream */}
-        <polygon
-          points="198,235 264,235 272,300 240,315 208,300"
-          fill="rgba(239,68,68,0.06)"
-          stroke="#EF4444"
-          strokeWidth="1"
-          strokeDasharray="4 3"
-          opacity="0.75"
-        />
-
-        {/* Grid overlay – subtle */}
-        {[60,120,180,240,300,360,420].map(x => (
-          <line key={x} x1={x} y1="0" x2={x} y2="360" stroke="rgba(255,255,255,0.025)" strokeWidth="0.5" />
-        ))}
-        {[60,120,180,240,300].map(y => (
-          <line key={y} x1="0" y1={y} x2="480" y2={y} stroke="rgba(255,255,255,0.025)" strokeWidth="0.5" />
-        ))}
-      </svg>
-
-      {/* Scan line overlay */}
-      <div className="scan-overlay" />
-
-      {/* HUD – coordinate tag */}
+// ─── Pipeline Step ───────────────────────────────────────────
+function PipelineStep({ num, title, desc, isAlert, isLast }: {
+  num: string; title: string; desc: string; isAlert?: boolean; isLast?: boolean;
+}) {
+  return (
+    <div style={{ flex: 1, position: 'relative' }}>
+      {/* Top border accent */}
       <div style={{
-        position: 'absolute', top: '0.75rem', left: '0.75rem',
-        display: 'flex', flexDirection: 'column', gap: '0.3rem',
+        height: '2px',
+        background: isAlert
+          ? `linear-gradient(to right, ${RED}, transparent)`
+          : 'linear-gradient(to right, rgba(255,255,255,0.08), transparent)',
+        marginBottom: '1.5rem',
+      }} />
+
+      {/* Step number */}
+      <div style={{
+        width: '28px', height: '28px',
+        borderRadius: '4px',
+        background: isAlert ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${isAlert ? 'rgba(239,68,68,0.3)' : BORDER}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: '1rem',
+      }}>
+        <span style={{
+          fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.06em',
+          color: isAlert ? RED : 'rgba(255,255,255,0.35)',
+          fontFamily: 'Inter, monospace',
+        }}>{num}</span>
+      </div>
+
+      <div style={{
+        fontSize: '0.9375rem', fontWeight: 600, color: TEXT_PRI,
+        letterSpacing: '-0.015em', marginBottom: '0.6rem',
+        fontFamily: 'Inter, sans-serif',
+      }}>{title}</div>
+
+      <div style={{
+        fontSize: '0.78rem', color: TEXT_SEC, lineHeight: 1.65,
+        fontFamily: 'Inter, sans-serif',
+      }}>{desc}</div>
+
+      {/* Connector arrow (not on last) */}
+      {!isLast && (
+        <div style={{
+          position: 'absolute', right: '-1.25rem', top: '2.5rem',
+          color: isAlert ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)',
+          fontSize: '1rem', fontFamily: 'monospace',
+          zIndex: 2,
+        }}>→</div>
+      )}
+    </div>
+  );
+}
+
+// ─── Incident Card ───────────────────────────────────────────
+function IncidentCard({ stat, unit, event, year, sub, dominant, delay }: {
+  stat: string; unit: string; event: string; year: string; sub: string;
+  dominant?: boolean; delay: number;
+}) {
+  return (
+    <div
+      className="vw-lift vw-fade-up"
+      style={{
+        background: dominant ? 'rgba(239,68,68,0.07)' : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${dominant ? 'rgba(239,68,68,0.25)' : BORDER}`,
+        borderRadius: '1rem',
+        padding: '2.5rem 2rem',
+        animationDelay: `${delay}s`,
+        cursor: 'default',
+      }}
+    >
+      <div style={{
+        fontSize: dominant ? '4.5rem' : '3rem',
+        fontWeight: 900, letterSpacing: '-0.05em',
+        color: RED, lineHeight: 1, marginBottom: '0.4rem',
+        fontFamily: 'Inter, sans-serif',
+      }}>{stat}</div>
+
+      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', marginBottom: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
+        {unit}
+      </div>
+
+      <div style={{ height: '1px', background: dominant ? 'rgba(239,68,68,0.2)' : BORDER, marginBottom: '1.25rem' }} />
+
+      <div style={{ fontSize: '0.875rem', color: TEXT_PRI, fontWeight: 600, marginBottom: '0.25rem', fontFamily: 'Inter, sans-serif' }}>
+        {event}
+      </div>
+      <div style={{ fontSize: '0.65rem', color: TEXT_SEC, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'Inter, monospace', marginBottom: '0.75rem' }}>
+        {year}
+      </div>
+      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', lineHeight: 1.5, fontFamily: 'Inter, sans-serif' }}>
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+// ─── Agent Flow Diagram ──────────────────────────────────────
+function AgentFlowDiagram() {
+  const [activeNode, setActiveNode] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveNode(n => (n + 1) % 5);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const agents = [
+    { name: 'Sentinel', sub: 'Optical / SAR', color: '#60A5FA' },
+    { name: 'Environ.', sub: 'Weather / Seismic', color: '#34D399' },
+    { name: 'Risk Eng.', sub: 'XGBoost Math', color: RED },
+    { name: 'Skeptic', sub: 'False Positive Guard', color: '#FBBF24' },
+    { name: 'Broadcast', sub: 'Nepali Alert', color: '#F97316' },
+  ];
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '0',
+      padding: '2rem',
+      background: 'rgba(255,255,255,0.02)',
+      border: `1px solid ${BORDER}`,
+      borderRadius: '1rem',
+      overflow: 'hidden',
+      position: 'relative',
+    }}>
+      {agents.map((agent, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+          {/* Node */}
+          <div style={{
+            flex: 1,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+            transition: 'all 0.3s ease',
+          }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '50%',
+              background: activeNode === i ? `${agent.color}22` : 'rgba(255,255,255,0.03)',
+              border: `1.5px solid ${activeNode === i ? agent.color : 'rgba(255,255,255,0.06)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
+              boxShadow: activeNode === i ? `0 0 20px ${agent.color}40` : 'none',
+            }}>
+              <div style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: activeNode === i ? agent.color : 'rgba(255,255,255,0.15)',
+                transition: 'all 0.4s ease',
+              }} />
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: '0.6875rem', fontWeight: 700,
+                color: activeNode === i ? TEXT_PRI : 'rgba(255,255,255,0.35)',
+                letterSpacing: '-0.01em', fontFamily: 'Inter, sans-serif',
+                transition: 'color 0.3s ease',
+              }}>{agent.name}</div>
+              <div style={{
+                fontSize: '0.525rem', color: 'rgba(255,255,255,0.2)',
+                fontFamily: 'Inter, monospace', letterSpacing: '0.05em',
+                marginTop: '0.15rem',
+              }}>{agent.sub}</div>
+            </div>
+          </div>
+
+          {/* Connector */}
+          {i < agents.length - 1 && (
+            <div style={{ width: '24px', flexShrink: 0, position: 'relative', height: '1px' }}>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
+                background: activeNode > i
+                  ? `linear-gradient(to right, ${agents[i].color}60, ${agents[i + 1].color}60)`
+                  : 'rgba(255,255,255,0.06)',
+                transition: 'background 0.4s ease',
+              }} />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Feature Bar ─────────────────────────────────────────────
+function FeatureBar({ label, value, pct, color, delay }: {
+  label: string; value: string; pct: number; color: string; delay: number;
+}) {
+  const [filled, setFilled] = useState(0);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setFilled(pct);
+    }, delay * 1000 + 400);
+    return () => clearTimeout(timeout);
+  }, [pct, delay]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.75rem', color: TEXT_SEC, fontFamily: 'Inter, sans-serif' }}>{label}</span>
+        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: TEXT_PRI, fontFamily: 'Inter, monospace' }}>{value}</span>
+      </div>
+      <div style={{
+        height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden',
       }}>
         <div style={{
-          fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.12em',
-          textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
-          background: 'rgba(0,0,0,0.6)', border: `1px solid ${BORDER}`,
-          borderRadius: '4px', padding: '0.2rem 0.5rem',
-          fontFamily: 'Inter, monospace',
-        }}>
-          PDGL_THULAGI_01 · 28.538°N 84.393°E
-        </div>
-        <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'Inter, monospace' }}>
-          SENTINEL-2 · SAR COMPOSITE
-        </div>
-      </div>
-
-      {/* HUD – risk score */}
-      <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', textAlign: 'right' }}>
-        <div style={{ fontSize: '0.55rem', color: TEXT_SEC, letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Inter, monospace', marginBottom: '0.1rem' }}>
-          RISK INDEX
-        </div>
-        <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#EF4444', letterSpacing: '-0.04em', lineHeight: 1, fontFamily: 'Inter, sans-serif' }}>
-          84
-        </div>
-        <div style={{ fontSize: '0.55rem', color: '#EF4444', fontWeight: 700, letterSpacing: '0.1em', fontFamily: 'Inter, monospace' }}>
-          ● CRITICAL
-        </div>
-      </div>
-
-      {/* Bottom bar */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'rgba(0,0,0,0.75)', borderTop: `1px solid ${BORDER}`,
-        padding: '0.4rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, monospace' }}>
-          VajraWatch · Live Terrain Analysis
-        </span>
-        <span style={{ fontSize: '0.6rem', color: '#EF4444', fontWeight: 600, letterSpacing: '0.08em', fontFamily: 'Inter, monospace' }}>
-          124,800 DOWNSTREAM · 186 MW
-        </span>
+          height: '100%', width: `${filled}%`,
+          background: color,
+          borderRadius: '2px',
+          transition: 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1)',
+        }} />
       </div>
     </div>
   );
 }
 
-// ─── Pipeline step card ─────────────────────────────────────────────────────
-function PipelineStep({ num, title, desc, isAlert }: { num: string; title: string; desc: string; isAlert?: boolean }) {
-  return (
-    <div style={{ flex: 1 }}>
-      <div style={{
-        height: '1px',
-        background: isAlert ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)',
-        marginBottom: '1.25rem',
-      }} />
-      <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', color: isAlert ? '#EF4444' : TEXT_SEC, fontFamily: 'Inter, monospace', marginBottom: '0.75rem' }}>
-        {num}
-      </div>
-      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: TEXT_PRI, letterSpacing: '-0.01em', marginBottom: '0.5rem', fontFamily: 'Inter, sans-serif' }}>
-        {title}
-      </div>
-      <div style={{ fontSize: '0.78rem', color: TEXT_SEC, lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}>
-        {desc}
-      </div>
-    </div>
-  );
-}
+// ─── Video Background ─────────────────────────────────────────
+const VIDEO_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_083109_283f3553-e28f-428b-a723-d639c617eb2b.mp4';
 
-// ─── MAIN HERO COMPONENT ────────────────────────────────────────────────────
+// ─── MAIN HERO ───────────────────────────────────────────────
 export default function Hero({ onEnterDashboard }: HeroProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const rafRef   = useRef<number>(0);
 
-  // Custom video fade loop
+  // Video fade loop
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     video.style.opacity = '0';
-    video.style.transition = 'opacity 0.5s ease';
+    video.style.transition = 'opacity 0.8s ease';
 
     const onCanPlay = () => { video.play().catch(() => {}); };
     const onPlay    = () => { video.style.opacity = '1'; };
     const onEnded   = () => {
       video.style.opacity = '0';
-      setTimeout(() => { video.currentTime = 0; video.play().catch(() => {}); }, 100);
+      setTimeout(() => { video.currentTime = 0; video.play().catch(() => {}); }, 200);
     };
 
     const tick = () => {
       if (video.duration && !video.paused) {
         const t = video.currentTime, d = video.duration, rem = d - t;
-        if (rem < 0.5 && rem > 0)  video.style.opacity = String(Math.max(0, rem / 0.5));
-        else if (t < 0.5)           video.style.opacity = String(Math.min(1, t / 0.5));
+        if (rem < 0.8 && rem > 0)  video.style.opacity = String(Math.max(0, rem / 0.8));
+        else if (t < 0.8)          video.style.opacity = String(Math.min(1, t / 0.8));
       }
       rafRef.current = requestAnimationFrame(tick);
     };
 
-    video.addEventListener('canplay',  onCanPlay);
-    video.addEventListener('play',     onPlay);
-    video.addEventListener('ended',    onEnded);
+    video.addEventListener('canplay', onCanPlay);
+    video.addEventListener('play', onPlay);
+    video.addEventListener('ended', onEnded);
     rafRef.current = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
-      video.removeEventListener('canplay',  onCanPlay);
-      video.removeEventListener('play',     onPlay);
-      video.removeEventListener('ended',    onEnded);
+      video.removeEventListener('canplay', onCanPlay);
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('ended', onEnded);
     };
   }, []);
 
   const maxW: React.CSSProperties = {
-    maxWidth: '75rem', margin: '0 auto', padding: '0 3rem', width: '100%', boxSizing: 'border-box' as const,
+    maxWidth: '78rem', margin: '0 auto', padding: '0 2.5rem', width: '100%', boxSizing: 'border-box',
   };
 
-  return (
-    <div className="landing-scroll" style={{
-      background: BG,
-      color: TEXT_PRI,
-      fontFamily: 'Inter, -apple-system, sans-serif',
-      overflowX: 'hidden',
-      overflowY: 'auto',
-      width: '100%',
-      height: '100%',
-    }}>
+  const handleNavClick = useCallback((href: string) => {
+    const el = document.querySelector(href);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
-      {/* ── FIXED VIDEO BACKGROUND ─────────────────────────────────────── */}
+  return (
+    <div className="vw-landing" style={{ background: BG, color: TEXT_PRI }}>
+
+      {/* ── FIXED VIDEO BACKGROUND ─────────────────────────── */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
         <video
           ref={videoRef}
@@ -214,89 +657,117 @@ export default function Hero({ onEnterDashboard }: HeroProps) {
           muted playsInline preload="auto"
           style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0 }}
         />
-        {/* Top-to-bottom gradient: solid black → transparent → solid black */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: `linear-gradient(to bottom, ${BG} 0%, rgba(5,5,5,0.45) 30%, rgba(5,5,5,0.6) 70%, ${BG} 100%)`,
+          background: `linear-gradient(to bottom, ${BG} 0%, rgba(3,3,3,0.55) 35%, rgba(3,3,3,0.7) 65%, ${BG} 100%)`,
+        }} />
+        {/* Noise grain */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
+          opacity: 0.4,
         }} />
       </div>
 
-      {/* ── ALL PAGE CONTENT ───────────────────────────────────────────── */}
       <div style={{ position: 'relative', zIndex: 10 }}>
 
-        {/* ╔══ NAVIGATION ══════════════════════════════════════════════╗ */}
+        {/* ── NAVIGATION ─────────────────────────────────────── */}
         <nav style={{
           position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(5,5,5,0.75)',
-          backdropFilter: 'blur(20px)',
+          background: 'rgba(3,3,3,0.85)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
           borderBottom: `1px solid ${BORDER}`,
         }}>
-          <div style={{ ...maxW, padding: '1.25rem 2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ ...maxW, padding: '1.125rem 2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 
-            {/* Logo — Instrument Serif, not red */}
-            <span className="font-serif-display" style={{ fontSize: '1.6rem', color: TEXT_PRI, letterSpacing: '-0.02em' }}>
-              VajraWatch
-            </span>
+            {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: '32px', height: '32px', borderRadius: '6px',
+                background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M13 2L4.09 12.96A1 1 0 005 14.5h6.5L10 22l8.91-10.96A1 1 0 0018 10h-6.5L13 2z"
+                    fill={RED} />
+                </svg>
+              </div>
+              <span className="font-serif-display" style={{ fontSize: '1.4rem', color: TEXT_PRI, letterSpacing: '-0.02em' }}>
+                VajraWatch
+              </span>
+            </div>
 
-            {/* Nav — Hick's Law: exactly 4 items */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2.25rem' }}>
-            {[
+            {/* Nav links */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+              {[
                 { label: 'The Threat', href: '#threat' },
                 { label: 'The Science', href: '#science' },
-                { label: 'Live Map', onClick: onEnterDashboard },
-              ].map(({ label, href, onClick }) => (
-                <a
+                { label: 'Architecture', href: '#architecture' },
+              ].map(({ label, href }) => (
+                <button
                   key={label}
-                  href={href ?? '#'}
-                  onClick={onClick ? (e) => { e.preventDefault(); onClick(); } : (e) => {
-                    e.preventDefault();
-                    const el = document.querySelector(href ?? '');
-                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  onClick={() => handleNavClick(href)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '0.8125rem', color: TEXT_SEC,
+                    fontFamily: 'Inter, sans-serif', letterSpacing: '0',
+                    transition: 'color 0.2s', padding: 0,
                   }}
-                  style={{ fontSize: '0.875rem', color: TEXT_SEC, textDecoration: 'none', cursor: 'pointer', transition: 'color 0.2s', fontFamily: 'Inter, sans-serif' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = TEXT_PRI; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = TEXT_SEC; }}
                 >
                   {label}
-                </a>
+                </button>
               ))}
 
-              {/* Dashboard button — intentionally inert until backend auth is wired */}
               <button
-                disabled
+                onClick={onEnterDashboard}
                 style={{
-                  background: 'transparent', color: 'rgba(255,255,255,0.2)', border: `1px solid rgba(255,255,255,0.05)`,
-                  borderRadius: '0.375rem', padding: '0.5rem 1.25rem', fontSize: '0.8125rem',
-                  fontWeight: 500, cursor: 'not-allowed', fontFamily: 'Inter, sans-serif',
+                  padding: '0.5rem 1.25rem',
+                  background: TEXT_PRI, color: BG,
+                  border: 'none', borderRadius: '9999px',
+                  fontSize: '0.8125rem', fontWeight: 600,
+                  cursor: 'pointer', transition: 'opacity 0.2s, transform 0.2s',
+                  fontFamily: 'Inter, sans-serif', letterSpacing: '-0.01em',
                 }}
+                onMouseEnter={e => { const b = e.currentTarget; b.style.transform = 'scale(1.04)'; b.style.opacity = '0.9'; }}
+                onMouseLeave={e => { const b = e.currentTarget; b.style.transform = 'scale(1)'; b.style.opacity = '1'; }}
               >
-                Dashboard
+                Live Map →
               </button>
             </div>
           </div>
         </nav>
 
-        {/* ╔══ HERO SECTION ════════════════════════════════════════════╗ */}
-        <section style={{ minHeight: '92vh', display: 'flex', alignItems: 'center', padding: '5rem 0 4rem' }}>
-          <div style={{ ...maxW, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6rem', alignItems: 'center' }}>
+        {/* ── ALERT TICKER ──────────────────────────────────── */}
+        <AlertTicker />
 
-            {/* ─ Left: Copy ─ */}
+        {/* ── HERO SECTION ────────────────────────────────── */}
+        <section style={{ minHeight: '94vh', display: 'flex', alignItems: 'center', padding: '5rem 0 4rem' }}>
+          <div style={{ ...maxW, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
+
+            {/* Left: Copy */}
             <div>
-              {/* Live eyebrow */}
-              <div className="animate-fade-rise" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2.25rem' }}>
-                <span className="live-dot" />
-                <span style={{ fontSize: '0.675rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace' }}>
-                  21 PDGLs Monitored · Nepal Himalayas
+              {/* Eyebrow */}
+              <div className="vw-fade-up" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '2rem' }}>
+                <div className="vw-live-dot" />
+                <span style={{
+                  fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.16em',
+                  textTransform: 'uppercase', color: RED,
+                  fontFamily: 'Inter, monospace',
+                }}>
+                  21 PDGLs Monitored · Nepal Himalayas · DeerHack 2026
                 </span>
               </div>
 
-              {/* Headline — Instrument Serif */}
+              {/* Headline */}
               <h1
-                className="animate-fade-rise-d1 font-serif-display"
+                className="vw-fade-up-d1 font-serif-display"
                 style={{
-                  fontSize: 'clamp(3rem, 5.5vw, 5rem)',
-                  lineHeight: 0.95,
-                  letterSpacing: '-2px',
+                  fontSize: 'clamp(3.25rem, 5.5vw, 5.5rem)',
+                  lineHeight: 0.92,
+                  letterSpacing: '-3px',
                   color: TEXT_PRI,
                   margin: 0,
                   fontWeight: 400,
@@ -304,230 +775,328 @@ export default function Hero({ onEnterDashboard }: HeroProps) {
               >
                 21 Lakes.
                 <br />36 Hours.
-                <br /><span style={{ color: '#EF4444' }}>One Warning.</span>
+                <br /><span className="vw-gradient-text">One Warning.</span>
               </h1>
 
-              {/* Subheadline anchored in a real event */}
-              <p
-                className="animate-fade-rise-d2"
-                style={{
-                  fontSize: '1rem', color: TEXT_SEC, lineHeight: 1.75,
-                  marginTop: '2rem', maxWidth: '30rem',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                Beyond the ice, we predict the flood. VajraWatch fuses satellite optics and XGBoost to give downstream communities the ultimate advantage:{' '}
-                <em style={{ color: 'rgba(255,255,255,0.55)', fontStyle: 'normal' }}>time.</em>
+              {/* Subheadline */}
+              <p className="vw-fade-up-d2" style={{
+                fontSize: '1rem', color: TEXT_SEC, lineHeight: 1.8,
+                marginTop: '2rem', maxWidth: '30rem',
+                fontFamily: 'Inter, sans-serif',
+              }}>
+                Beyond the ice, we predict the flood. VajraWatch fuses satellite optics, seismic feeds, and XGBoost to give Himalayan communities the ultimate advantage:{' '}
+                <em style={{ color: 'rgba(255,255,255,0.5)', fontStyle: 'normal' }}>time.</em>
               </p>
 
-              <p className="animate-fade-rise-d2" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.25)', marginTop: '0.75rem', fontFamily: 'Inter, sans-serif' }}>
-                Bhote Koshi 2025: 4 hydropower plants destroyed. 8% of Nepal's grid wiped. 36 hours of warning would have changed everything.
-              </p>
+              {/* Historical anchor */}
+              <div className="vw-fade-up-d2" style={{
+                marginTop: '1.25rem', padding: '0.875rem 1rem',
+                background: 'rgba(239,68,68,0.06)',
+                border: '1px solid rgba(239,68,68,0.15)',
+                borderLeft: '2px solid rgba(239,68,68,0.5)',
+                borderRadius: '0.5rem',
+                maxWidth: '30rem',
+              }}>
+                <p style={{
+                  fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)',
+                  lineHeight: 1.6, fontFamily: 'Inter, sans-serif', margin: 0,
+                }}>
+                  <span style={{ color: RED, fontWeight: 700 }}>Bhote Koshi, July 2025:</span>{' '}
+                  4 hydropower plants destroyed. 8% of Nepal's grid eliminated. $200M+ in losses.{' '}
+                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>36 hours of warning would have changed everything.</span>
+                </p>
+              </div>
 
-              {/* CTA — single primary action, Fitts's Law */}
-              <div className="animate-fade-rise-d3" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '3rem' }}>
+              {/* CTA */}
+              <div className="vw-fade-up-d3" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '2.75rem' }}>
                 <button
                   onClick={onEnterDashboard}
                   style={{
-                    padding: '1.1rem 3rem',
-                    fontSize: '0.9375rem', fontWeight: 500,
-                    background: '#FFFFFF', color: '#050505',
+                    padding: '1rem 2.5rem',
+                    fontSize: '0.9375rem', fontWeight: 600,
+                    background: TEXT_PRI, color: BG,
                     border: 'none', borderRadius: '9999px',
-                    cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s',
-                    minHeight: '52px', fontFamily: 'Inter, sans-serif',
-                    letterSpacing: '-0.01em',
+                    cursor: 'pointer', transition: 'transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease',
+                    fontFamily: 'Inter, sans-serif', letterSpacing: '-0.015em',
                   }}
-                  onMouseEnter={e => { const b = e.currentTarget; b.style.transform = 'scale(1.04)'; b.style.boxShadow = '0 8px 40px rgba(255,255,255,0.15)'; }}
+                  onMouseEnter={e => { const b = e.currentTarget; b.style.transform = 'scale(1.05)'; b.style.boxShadow = '0 8px 40px rgba(255,255,255,0.18)'; }}
                   onMouseLeave={e => { const b = e.currentTarget; b.style.transform = 'scale(1)'; b.style.boxShadow = 'none'; }}
                 >
                   Enter Live Map
                 </button>
+
+                <button
+                  onClick={() => handleNavClick('#science')}
+                  style={{
+                    padding: '1rem 1.75rem',
+                    fontSize: '0.875rem', fontWeight: 500,
+                    background: 'transparent', color: TEXT_SEC,
+                    border: `1px solid ${BORDER}`, borderRadius: '9999px',
+                    cursor: 'pointer', transition: 'color 0.2s, border-color 0.2s',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                  onMouseEnter={e => { const b = e.currentTarget; b.style.color = TEXT_PRI; b.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                  onMouseLeave={e => { const b = e.currentTarget; b.style.color = TEXT_SEC; b.style.borderColor = BORDER; }}
+                >
+                  See the Science
+                </button>
+              </div>
+
+              {/* Trust indicators */}
+              <div className="vw-fade-up-d4" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '2rem' }}>
+                {[
+                  { val: '87%', label: 'Model Precision' },
+                  { val: '10ms', label: 'Inference Time' },
+                  { val: '36h', label: 'Warning Window' },
+                ].map(({ val, label }) => (
+                  <div key={label} style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.125rem', fontWeight: 800, color: TEXT_PRI, letterSpacing: '-0.04em', fontFamily: 'Inter, sans-serif' }}>{val}</div>
+                    <div style={{ fontSize: '0.625rem', color: TEXT_SEC, fontFamily: 'Inter, sans-serif', letterSpacing: '0.05em', marginTop: '0.1rem' }}>{label}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* ─ Right: Terrain viz ─ */}
-            <div className="animate-fade-rise-d3">
-              <TerrainViz />
-              {/* Caption */}
-              <p style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.2)', marginTop: '0.75rem', textAlign: 'center', fontFamily: 'Inter, monospace', letterSpacing: '0.05em' }}>
-                Thulagi Lake, Gandaki, Nepal · Risk Score 84/100 · CRITICAL
-              </p>
+            {/* Right: Radar visualization */}
+            <div className="vw-fade-in-d1">
+              <RadarViz />
             </div>
           </div>
         </section>
 
-        {/* ╔══ THE THREAT ══════════════════════════════════════════════╗ */}
-        <section id="threat" style={{ padding: '8rem 0' }}>
+        {/* ── GLOF INCIDENTS ──────────────────────────────── */}
+        <section id="threat" style={{ padding: '7rem 0' }}>
           <div style={maxW}>
-            <div className="section-divider" style={{ marginBottom: '5rem' }} />
+            <div className="vw-section-rule" style={{ marginBottom: '5rem' }} />
 
-            <div style={{ marginBottom: '4rem' }}>
-              <span style={{ fontSize: '0.675rem', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace' }}>
+            <div className="vw-fade-up" style={{ marginBottom: '4rem' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace' }}>
                 The Cost of No Warning
               </span>
-              <h2 className="font-serif-display" style={{ fontSize: 'clamp(2rem, 4vw, 3.25rem)', fontWeight: 400, letterSpacing: '-1.5px', color: TEXT_PRI, margin: '1rem 0 0', lineHeight: 1.1 }}>
-                Three events. Billions in damages. Zero warning.
+              <h2 className="font-serif-display" style={{ fontSize: 'clamp(2.25rem, 4vw, 3.5rem)', fontWeight: 400, letterSpacing: '-1.5px', color: TEXT_PRI, margin: '1rem 0 0', lineHeight: 1.05 }}>
+                Three events. Billions lost.
+                <br />Zero advance notice.
               </h2>
             </div>
 
-            {/* Stat blocks — numbers only, no prose */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px', background: BORDER }}>
-              {[
-                { stat: '55', unit: 'deaths', event: 'South Lonak, Sikkim', year: '2023', sub: '$120M in damage', dominant: false },
-                { stat: '$200M+', unit: 'economic loss', event: 'Bhote Koshi GLOF', year: 'Jul 2025', sub: '4 plants · 8% of Nepal\'s grid', dominant: true },
-                { stat: '1', unit: 'village destroyed', event: 'Thame, Khumbu', year: 'Aug 2024', sub: 'Entire community displaced', dominant: false },
-              ].map(({ stat, unit, event, year, sub, dominant }) => (
-                <div key={event} style={{
-                  background: dominant ? 'rgba(239,68,68,0.1)' : 'rgba(5,5,5,0.4)',
-                  backdropFilter: 'blur(12px)',
-                  padding: '3rem 2.5rem',
-                  borderLeft: dominant ? '1px solid rgba(239,68,68,0.25)' : 'none',
-                  borderRight: dominant ? '1px solid rgba(239,68,68,0.25)' : 'none',
-                }}>
-                  {/* Von Restorff — dominant is 5xl, others 3xl */}
-                  <div style={{ fontSize: dominant ? '5rem' : '3.5rem', fontWeight: 800, letterSpacing: '-0.05em', color: '#EF4444', lineHeight: 1, marginBottom: '0.5rem', fontFamily: 'Inter, sans-serif' }}>
-                    {stat}
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
-                    {unit}
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: TEXT_PRI, fontWeight: 600, marginBottom: '0.25rem', fontFamily: 'Inter, sans-serif' }}>
-                    {event}
-                  </div>
-                  <div style={{ fontSize: '0.675rem', color: TEXT_SEC, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'Inter, monospace', marginBottom: '0.5rem' }}>
-                    {year}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.4, fontFamily: 'Inter, sans-serif' }}>
-                    {sub}
-                  </div>
-                </div>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+              <IncidentCard stat="$200M+" unit="economic loss" event="Bhote Koshi GLOF" year="July 2025" sub="4 hydropower plants · 8% of Nepal's grid eliminated in hours" dominant delay={0} />
+              <IncidentCard stat="55" unit="lives lost" event="South Lonak, Sikkim" year="October 2023" sub="$120M infrastructure damage · Teesta dam breach" delay={0.1} />
+              <IncidentCard stat="1" unit="village destroyed" event="Thame, Khumbu" year="August 2024" sub="Entire community displaced · No early warning issued" delay={0.2} />
             </div>
 
-            {/* Credibility line */}
-            <p style={{ marginTop: '2rem', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.2)', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
+            <p className="vw-fade-up" style={{ marginTop: '2.5rem', fontSize: '0.78rem', color: 'rgba(255,255,255,0.18)', textAlign: 'center', fontFamily: 'Inter, sans-serif', animationDelay: '0.3s' }}>
               Aligned with the{' '}
-              <span style={{ color: 'rgba(255,255,255,0.4)' }}>$36.1M UNDP Green Climate Fund grant</span>
+              <span style={{ color: 'rgba(255,255,255,0.35)' }}>$36.1M UNDP Green Climate Fund grant</span>
               {' '}for Nepal's Department of Hydrology and Meteorology.
             </p>
           </div>
         </section>
 
-        {/* ╔══ THE SCIENCE ═════════════════════════════════════════════╗ */}
-        <section id="science" style={{ padding: '8rem 0' }}>
+        {/* ── THE SCIENCE ────────────────────────────────── */}
+        <section id="science" style={{ padding: '7rem 0' }}>
           <div style={maxW}>
-            <div className="section-divider" style={{ marginBottom: '5rem' }} />
+            <div className="vw-section-rule" style={{ marginBottom: '5rem' }} />
 
-            <div style={{ marginBottom: '4rem' }}>
-              <span style={{ fontSize: '0.675rem', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace' }}>
-                Technical Architecture
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center', marginBottom: '5rem' }}>
+              <div className="vw-fade-up">
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace' }}>
+                  Technical Architecture
+                </span>
+                <h2 className="font-serif-display" style={{ fontSize: 'clamp(2.25rem, 4vw, 3.25rem)', fontWeight: 400, letterSpacing: '-1.5px', color: TEXT_PRI, margin: '1rem 0 1.5rem', lineHeight: 1.05 }}>
+                  Satellite to alert.
+                  <br />Under 10 minutes.
+                </h2>
+                <p style={{ fontSize: '0.875rem', color: TEXT_SEC, lineHeight: 1.75, fontFamily: 'Inter, sans-serif', marginBottom: '2rem' }}>
+                  VajraWatch is a hybrid deterministic + agentic system. The math engine is the backbone. The agents make it legible to humans.
+                </p>
+
+                {/* 8 Feature bars */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace', marginBottom: '0.25rem' }}>
+                    8-Feature Risk Matrix
+                  </div>
+                  {[
+                    { label: 'NDWI Delta (Lake Expansion)', value: '+18.5%', pct: 85, color: RED, delay: 0 },
+                    { label: 'Precip 7-Day Anomaly', value: '210mm', pct: 75, color: '#F97316', delay: 0.05 },
+                    { label: 'SAR Backscatter Change', value: '−3.2 dB', pct: 68, color: '#FBBF24', delay: 0.1 },
+                    { label: 'Seismic Count (M3.0+)', value: '5 events', pct: 52, color: '#34D399', delay: 0.15 },
+                    { label: 'Temp Anomaly vs Baseline', value: '+2.1°C', pct: 60, color: '#60A5FA', delay: 0.2 },
+                  ].map(props => (
+                    <FeatureBar key={props.label} {...props} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="vw-fade-in-d1" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Satellite orbit */}
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <SatelliteOrbit />
+                </div>
+
+                {/* Stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  {[
+                    { val: '87%', label: 'XGBoost Precision', color: RED },
+                    { val: '<10ms', label: 'Inference Latency', color: '#34D399' },
+                    { val: '50yr', label: 'Neo4j Knowledge Graph', color: '#60A5FA' },
+                    { val: '$150M', label: 'Loss Prevented/Alert', color: '#FBBF24' },
+                  ].map(({ val, label, color }) => (
+                    <div key={label} style={{
+                      background: 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: '0.75rem',
+                      padding: '1.25rem',
+                    }}>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 900, color, letterSpacing: '-0.05em', lineHeight: 1, marginBottom: '0.3rem', fontFamily: 'Inter, sans-serif' }}>{val}</div>
+                      <div style={{ fontSize: '0.6875rem', color: TEXT_SEC, fontFamily: 'Inter, sans-serif' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 4-step pipeline */}
+            <div className="vw-fade-up" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '2.5rem' }}>
+              <PipelineStep num="01" title="Sentinel Analysis" desc="Optical + SAR satellite data detects lake expansion and ice movement anomalies via NDWI delta." />
+              <PipelineStep num="02" title="Env. Cross-Check" desc="7-day precipitation, seismic events, and temperature anomalies validate the satellite signal." />
+              <PipelineStep num="03" title="XGBoost Engine" desc="8-feature deterministic model outputs a 0–100 risk index in under 10ms with 87% precision." isAlert />
+              <PipelineStep num="04" title="Nepali Broadcast" desc="gTTS generates a local-language audio alert for downstream communities within the 36-hour window." isAlert isLast />
+            </div>
+          </div>
+        </section>
+
+        {/* ── AGENT ARCHITECTURE ─────────────────────────── */}
+        <section id="architecture" style={{ padding: '7rem 0' }}>
+          <div style={maxW}>
+            <div className="vw-section-rule" style={{ marginBottom: '5rem' }} />
+
+            <div style={{ marginBottom: '3rem' }}>
+              <span className="vw-fade-up" style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace' }}>
+                LangGraph Agent Pipeline
               </span>
-              <h2 className="font-serif-display" style={{ fontSize: 'clamp(2rem, 4vw, 3.25rem)', fontWeight: 400, letterSpacing: '-1.5px', color: TEXT_PRI, margin: '1rem 0 0', lineHeight: 1.1 }}>
-                Satellite to alert.<br />Under 10 minutes.
+              <h2 className="vw-fade-up-d1 font-serif-display" style={{ fontSize: 'clamp(2rem, 4vw, 3.25rem)', fontWeight: 400, letterSpacing: '-1.5px', color: TEXT_PRI, margin: '1rem 0 0', lineHeight: 1.05 }}>
+                Five agents. One decision.
               </h2>
             </div>
 
-            {/* 4-step horizontal pipeline */}
-            <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'flex-start' }}>
-              <PipelineStep
-                num="01"
-                title="Sentinel Analysis"
-                desc="Optical + SAR satellite data detects lake area expansion and ice movement anomalies via NDWI delta."
-              />
-              <div style={{ width: '1px', background: BORDER, height: '100px', alignSelf: 'center', flexShrink: 0, marginBottom: '2rem' }} />
-              <PipelineStep
-                num="02"
-                title="Environmental Cross-Check"
-                desc="7-day precipitation and seismic event data validate the satellite signal against atmospheric baselines."
-              />
-              <div style={{ width: '1px', background: BORDER, height: '100px', alignSelf: 'center', flexShrink: 0, marginBottom: '2rem' }} />
-              <PipelineStep
-                num="03"
-                title="XGBoost Risk Score"
-                desc="8-feature deterministic model outputs a 0–100 risk index in under 10 milliseconds with 87% precision."
-                isAlert
-              />
-              <div style={{ width: '1px', background: 'rgba(239,68,68,0.2)', height: '100px', alignSelf: 'center', flexShrink: 0, marginBottom: '2rem' }} />
-              <PipelineStep
-                num="04"
-                title="Nepali Audio Alert"
-                desc="ElevenLabs multilingual TTS generates a local-language broadcast for downstream communities within the 36-hour window."
-                isAlert
-              />
+            <div className="vw-fade-up-d2">
+              <AgentFlowDiagram />
             </div>
 
-            {/* Precision numbers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px', background: BORDER, marginTop: '5rem' }}>
+            {/* Moat description */}
+            <div className="vw-fade-up-d3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginTop: '3rem' }}>
               {[
-                { val: '87%', label: 'model precision', dominant: false },
-                { val: '$50–200M', label: 'prevented per plant', dominant: true },
-                { val: '36h', label: 'advance warning window', dominant: false },
-              ].map(({ val, label, dominant }) => (
-                <div key={label} style={{ background: 'rgba(5,5,5,0.4)', backdropFilter: 'blur(12px)', padding: '2.5rem 2rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: dominant ? '3.5rem' : '2.5rem', fontWeight: 800, letterSpacing: '-0.04em', color: dominant ? TEXT_PRI : 'rgba(255,255,255,0.55)', lineHeight: 1, marginBottom: '0.5rem', fontFamily: 'Inter, sans-serif' }}>
-                    {val}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: TEXT_SEC, fontFamily: 'Inter, sans-serif' }}>
-                    {label}
-                  </div>
+                { icon: '🛡', title: 'Skeptic Agent', desc: 'An independent anomaly checker prevents false alarms — the judge\'s toughest question, answered in the architecture.' },
+                { icon: '🗃', title: '50-Year Neo4j Graph', desc: 'The moat is not the code. It\'s the knowledge graph. Every GLOF, every lake, every infrastructure node — wired.' },
+                { icon: '📡', title: 'Offline-First Design', desc: 'Hackathon internet will fail. Ollama runs local. Data is cached. The system demo\'s even when the router dies.' },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} className="vw-lift" style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: '0.875rem',
+                  padding: '1.5rem',
+                }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>{icon}</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: TEXT_PRI, marginBottom: '0.5rem', fontFamily: 'Inter, sans-serif' }}>{title}</div>
+                  <div style={{ fontSize: '0.75rem', color: TEXT_SEC, lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}>{desc}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ╔══ DEMO BRIDGE ═════════════════════════════════════════════╗ */}
+        {/* ── DEMO CTA ───────────────────────────────────── */}
         <section style={{ padding: '8rem 0' }}>
           <div style={{ ...maxW, textAlign: 'center' }}>
-            <div className="section-divider" style={{ marginBottom: '5rem' }} />
+            <div className="vw-section-rule" style={{ marginBottom: '5rem' }} />
 
-            <span style={{ fontSize: '0.675rem', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEXT_SEC, fontFamily: 'Inter, monospace' }}>
-              See the System
-            </span>
-            <h2 className="font-serif-display" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 400, letterSpacing: '-2px', color: TEXT_PRI, margin: '1.5rem 0 2rem', lineHeight: 1 }}>
-              See a GLOF risk alert happen<br />in real time.
+            <div className="vw-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
+              <div className="vw-live-dot-green" />
+              <span style={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#22c55e', fontFamily: 'Inter, monospace' }}>
+                System Online · Demo Ready
+              </span>
+            </div>
+
+            <h2 className="vw-fade-up-d1 font-serif-display" style={{ fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', fontWeight: 400, letterSpacing: '-2.5px', color: TEXT_PRI, margin: '0 0 1.5rem', lineHeight: 0.95 }}>
+              See a GLOF risk alert
+              <br />happen in real time.
             </h2>
-            <p style={{ fontSize: '1rem', color: TEXT_SEC, maxWidth: '36rem', margin: '0 auto 3.5rem', lineHeight: 1.7, fontFamily: 'Inter, sans-serif' }}>
+
+            <p className="vw-fade-up-d2" style={{ fontSize: '1rem', color: TEXT_SEC, maxWidth: '34rem', margin: '0 auto 3.5rem', lineHeight: 1.75, fontFamily: 'Inter, sans-serif' }}>
               The Map Analysis pulls live satellite anomaly data, runs the multi-agent pipeline, and outputs a risk score with a Nepali audio alert — within 36 hours of the triggering event.
             </p>
 
-            {/* Big CTA — Fitts's Law */}
-            <button
-              onClick={onEnterDashboard}
-              style={{
-                padding: '1.25rem 4rem', fontSize: '1rem', fontWeight: 500,
-                background: '#FFFFFF', color: '#050505',
-                border: 'none', borderRadius: '9999px',
-                cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s',
-                minHeight: '58px', fontFamily: 'Inter, sans-serif',
-              }}
-              onMouseEnter={e => { const b = e.currentTarget; b.style.transform = 'scale(1.04)'; b.style.boxShadow = '0 12px 50px rgba(255,255,255,0.12)'; }}
-              onMouseLeave={e => { const b = e.currentTarget; b.style.transform = 'scale(1)'; b.style.boxShadow = 'none'; }}
-            >
-              Enter Live Map
-            </button>
+            <div className="vw-fade-up-d3" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+              <button
+                onClick={onEnterDashboard}
+                style={{
+                  padding: '1.25rem 4rem',
+                  fontSize: '1rem', fontWeight: 600,
+                  background: TEXT_PRI, color: BG,
+                  border: 'none', borderRadius: '9999px',
+                  cursor: 'pointer', transition: 'transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease',
+                  fontFamily: 'Inter, sans-serif', letterSpacing: '-0.015em',
+                  boxShadow: '0 0 0 0 rgba(255,255,255,0)',
+                }}
+                onMouseEnter={e => {
+                  const b = e.currentTarget;
+                  b.style.transform = 'scale(1.06)';
+                  b.style.boxShadow = '0 12px 60px rgba(255,255,255,0.15)';
+                }}
+                onMouseLeave={e => {
+                  const b = e.currentTarget;
+                  b.style.transform = 'scale(1)';
+                  b.style.boxShadow = '0 0 0 0 rgba(255,255,255,0)';
+                }}
+              >
+                Enter Live Map →
+              </button>
 
-            <div style={{ marginTop: '1.25rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'Inter, sans-serif' }}>
-              21 PDGLs monitored · DeerHack 2026
+              <span style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.18)', fontFamily: 'Inter, sans-serif' }}>
+                21 PDGLs monitored · Thulagi Lake pre-loaded · No backend required
+              </span>
             </div>
           </div>
         </section>
 
-        {/* ╔══ FOOTER ══════════════════════════════════════════════════╗ */}
+        {/* ── FOOTER ───────────────────────────────────── */}
         <footer style={{ padding: '2.5rem 0', borderTop: `1px solid ${BORDER}` }}>
           <div style={{ ...maxW, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="font-serif-display" style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.2)' }}>VajraWatch</span>
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)', fontFamily: 'Inter, sans-serif' }}>DeerHack 2026 · Built for the Himalayas</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{
+                width: '24px', height: '24px', borderRadius: '4px',
+                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                  <path d="M13 2L4.09 12.96A1 1 0 005 14.5h6.5L10 22l8.91-10.96A1 1 0 0018 10h-6.5L13 2z" fill={RED} />
+                </svg>
+              </div>
+              <span className="font-serif-display" style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.2)' }}>VajraWatch</span>
+            </div>
+
+            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.12)', fontFamily: 'Inter, sans-serif' }}>
+              DeerHack 2026 · Built for the Himalayas · MIT License
+            </span>
+
             <button
               onClick={onEnterDashboard}
-              style={{ fontSize: '0.75rem', color: TEXT_SEC, background: 'none', border: `1px solid ${BORDER}`, borderRadius: '0.375rem', padding: '0.4rem 0.875rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = TEXT_PRI; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = TEXT_SEC; }}
+              style={{
+                fontSize: '0.75rem', color: TEXT_SEC,
+                background: 'none', border: `1px solid ${BORDER}`,
+                borderRadius: '0.375rem', padding: '0.4rem 0.875rem',
+                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                transition: 'color 0.2s, border-color 0.2s',
+              }}
+              onMouseEnter={e => { const b = e.currentTarget; b.style.color = TEXT_PRI; b.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+              onMouseLeave={e => { const b = e.currentTarget; b.style.color = TEXT_SEC; b.style.borderColor = BORDER; }}
             >
               Map Analysis →
             </button>
           </div>
         </footer>
+
       </div>
     </div>
   );
