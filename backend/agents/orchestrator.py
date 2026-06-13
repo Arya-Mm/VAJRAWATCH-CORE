@@ -20,17 +20,18 @@ class GLOFState(TypedDict):
     audio_url: str | None
     agent_trace: list[dict[str, str]]
     is_demo_mode: bool
+    is_simulation: bool
     diagnostics: dict[str, bool]
     active_pipeline: str
 
 # 2. Diagnostic & Routing Logic
 def diagnostic_node(state: GLOFState) -> GLOFState:
-    """Evaluates system constraints in <500ms before pipeline selection."""
+    """Evaluates system constraints before pipeline selection."""
     keys_present = bool(os.getenv("NVIDIA_API_KEY")) and bool(os.getenv("NEO4J_URI"))
     
     network_healthy = False
     try:
-        requests.get("https://api.open-meteo.com/v1/forecast", timeout=0.5)
+        requests.get("https://api.open-meteo.com/v1/forecast", timeout=2.0)
         network_healthy = True
     except requests.exceptions.RequestException:
         pass
@@ -45,6 +46,9 @@ def diagnostic_node(state: GLOFState) -> GLOFState:
 def route_pipeline(state: GLOFState) -> str:
     """Routes execution based on hardware, latency, and keys."""
     d = state["diagnostics"]
+    if state.get("is_simulation"):
+        state["active_pipeline"] = "PROD"
+        return "prod_pipeline"
     if d["demo_mode"] or not d["network_healthy"] or not d["keys_present"]:
         state["active_pipeline"] = "LEAN"
         return "lean_pipeline"

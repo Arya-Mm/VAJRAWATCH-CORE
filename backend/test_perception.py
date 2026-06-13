@@ -2,9 +2,9 @@ from backend.agents.perception.perception_nodes import (
     sentinel_node,
     weather_node,
     seismic_node,
-    nvidia_forecast_node,
-    GLOFState
+    nvidia_forecast_node
 )
+from backend.agents.orchestrator import GLOFState
 
 def run_tests():
     print("Initializing test GLOFState...")

@@ -4,22 +4,22 @@ import requests
 import sys
 
 print("Starting Uvicorn server...")
+log_file = open("uvicorn_test.log", "w", encoding="utf-8")
 proc = subprocess.Popen(
     [sys.executable, "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "8000"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    text=True
+    stdout=log_file,
+    stderr=subprocess.STDOUT
 )
 
 # Wait for server to start
-time.sleep(3.0)
+time.sleep(7.0)
 
 # Check if process is still running
 if proc.poll() is not None:
     print("Failed to start Uvicorn server!")
-    stdout, stderr = proc.communicate()
-    print("Stdout:", stdout)
-    print("Stderr:", stderr)
+    log_file.close()
+    with open("uvicorn_test.log", "r", encoding="utf-8") as f:
+        print(f.read())
     sys.exit(1)
 
 print("Server started successfully.")
@@ -76,10 +76,21 @@ try:
 
 except Exception as e:
     print(f"Error during testing: {e}")
+    try:
+        log_file.close()
+        with open("uvicorn_test.log", "r", encoding="utf-8") as f:
+            print("\n=== Uvicorn Server Logs ===")
+            print(f.read())
+    except Exception:
+        pass
 
 finally:
     print("\nStopping Uvicorn server...")
     proc.terminate()
+    try:
+        log_file.close()
+    except Exception:
+        pass
     try:
         proc.wait(timeout=5)
         print("Server stopped.")

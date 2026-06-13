@@ -1,9 +1,9 @@
 from backend.agents.reasoning.reasoning_nodes import (
     risk_fusion_node,
     skeptic_node,
-    graph_rag_node,
-    GLOFState
+    graph_rag_node
 )
+from backend.agents.orchestrator import GLOFState
 
 def run_tests():
     # 1. Test case: GREEN State (low values)

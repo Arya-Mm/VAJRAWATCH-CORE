@@ -226,6 +226,7 @@ def get_risk(lake_id: str, demo_mode: bool = False) -> dict[str, Any]:
         "report": "",
         "agent_trace": [],
         "is_demo_mode": demo_mode,
+        "is_simulation": _simulate_mode.get(lake_id, False),
         "diagnostics": {},
         "active_pipeline": "",
     }

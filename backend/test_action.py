@@ -10,6 +10,11 @@ from backend.agents.orchestrator import GRAPH, GLOFState
 load_dotenv()
 
 def run_integration_test():
+    import sys
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
     print("=== STARTING ADAPTIVE ORCHESTRATOR INTEGRATION TEST ===")
     
     # Configure env to print webhook logs locally
