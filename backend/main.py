@@ -154,7 +154,9 @@ def generate_nepali_tts_elevenlabs(lake_id: str, risk_score: float) -> str | Non
         f"जोखिम स्कोर {int(risk_score)} प्रतिशत। "
         f"बेसिसहार, खुदी, र भुलेभुले क्षेत्रका मानिसहरू तुरुन्त सुरक्षित स्थानमा जानुहोस्।"
     )
-    audio_path = STATIC_DIR / "alerts" / f"{lake_id}.mp3"
+
+    import base64
+    import io
 
     if ELEVENLABS_API_KEY:
         try:
@@ -169,9 +171,8 @@ def generate_nepali_tts_elevenlabs(lake_id: str, risk_score: float) -> str | Non
                 timeout=15,
             )
             if r.status_code == 200:
-                with open(audio_path, "wb") as f:
-                    f.write(r.content)
-                return f"/static/alerts/{lake_id}.mp3"
+                audio_b64 = base64.b64encode(r.content).decode("utf-8")
+                return f"data:audio/mp3;base64,{audio_b64}"
         except Exception as e:
             print(f"ElevenLabs failed: {e}")
 
@@ -179,8 +180,12 @@ def generate_nepali_tts_elevenlabs(lake_id: str, risk_score: float) -> str | Non
     try:
         from gtts import gTTS  # type: ignore[import-untyped]
 
-        gTTS(text=text, lang="ne").save(str(audio_path))
-        return f"/static/alerts/{lake_id}.mp3"
+        fp = io.BytesIO()
+        tts = gTTS(text=text, lang="ne")
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        audio_b64 = base64.b64encode(fp.read()).decode("utf-8")
+        return f"data:audio/mp3;base64,{audio_b64}"
     except Exception as e:
         print(f"gTTS fallback failed: {e}")
 

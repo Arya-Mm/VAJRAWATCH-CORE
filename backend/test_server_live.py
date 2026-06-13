@@ -21,7 +21,7 @@ try:
 
     # 2. Risk check (Baseline)
     print("\n--- Testing GET /risk/PDGL_THULAGI_01 (Baseline) ---")
-    r = requests.get(f"{base_url}/risk/PDGL_THULAGI_01", timeout=25)
+    r = requests.get(f"{base_url}/risk/PDGL_THULAGI_01", timeout=60)
     print("Status:", r.status_code)
     res_data = r.json()
     print("Risk score:", res_data.get("risk_score"))
@@ -35,13 +35,13 @@ try:
 
     # 3. Enable Simulation
     print("\n--- Testing POST /simulate/PDGL_THULAGI_01 (Enable) ---")
-    r = requests.post(f"{base_url}/simulate/PDGL_THULAGI_01?active=true", timeout=5)
+    r = requests.post(f"{base_url}/simulate/PDGL_THULAGI_01?active=true", timeout=60)
     print("Status:", r.status_code)
     print("Response:", r.json())
 
     # 4. Risk check (RED / simulated - triggers ElevenLabs)
     print("\n--- Testing GET /risk/PDGL_THULAGI_01 (RED Alert - ElevenLabs) ---")
-    r = requests.get(f"{base_url}/risk/PDGL_THULAGI_01", timeout=30)
+    r = requests.get(f"{base_url}/risk/PDGL_THULAGI_01", timeout=60)
     print("Status:", r.status_code)
     res_data = r.json()
     print("Risk score:", res_data.get("risk_score"))
@@ -51,7 +51,7 @@ try:
 
     # 5. Explain check (Neo4j integration)
     print("\n--- Testing GET /explain/PDGL_THULAGI_01 (Neo4j Integration) ---")
-    r = requests.get(f"{base_url}/explain/PDGL_THULAGI_01", timeout=15)
+    r = requests.get(f"{base_url}/explain/PDGL_THULAGI_01", timeout=60)
     print("Status:", r.status_code)
     explain_data = r.json()
     print("Explanation:", explain_data.get("explanation"))

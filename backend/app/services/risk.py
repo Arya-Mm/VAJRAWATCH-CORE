@@ -207,10 +207,9 @@ class RiskService:
             f"जोखिम स्कोर {int(risk_score)} प्रतिशत। "
             f"बेसिसहार, खुदी, र भुलेभुले क्षेत्रका मानिसहरू तुरुन्त सुरक्षित स्थानमा जानुहोस्।"
         )
-        static_dir = self._settings.data_dir.parent / "backend" / "static"
-        alerts_dir = static_dir / "alerts"
-        alerts_dir.mkdir(parents=True, exist_ok=True)
-        audio_path = alerts_dir / f"{lake_id}.mp3"
+
+        import base64
+        import io
 
         if self._settings.elevenlabs_api_key:
             try:
@@ -229,8 +228,8 @@ class RiskService:
                         timeout=15.0,
                     )
                     if r.status_code == 200:
-                        audio_path.write_bytes(r.content)
-                        return f"/static/alerts/{lake_id}.mp3"
+                        audio_b64 = base64.b64encode(r.content).decode("utf-8")
+                        return f"data:audio/mp3;base64,{audio_b64}"
             except Exception:  # noqa: S110
                 pass
 
@@ -238,9 +237,12 @@ class RiskService:
         try:
             from gtts import gTTS  # type: ignore[import-untyped]
 
+            fp = io.BytesIO()
             tts = gTTS(text=text, lang="ne")
-            tts.save(str(audio_path))
-            return f"/static/alerts/{lake_id}.mp3"
+            tts.write_to_fp(fp)
+            fp.seek(0)
+            audio_b64 = base64.b64encode(fp.read()).decode("utf-8")
+            return f"data:audio/mp3;base64,{audio_b64}"
         except Exception:  # noqa: S110
             pass
 

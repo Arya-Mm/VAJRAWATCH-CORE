@@ -165,9 +165,8 @@ def nepali_tts_node(state: dict) -> dict:
         # Get localized warning text based on region/lake
         lang_code, twilio_lang, text = get_lake_language_and_template(lake_id, score)
         
-        static_dir = os.path.join("backend", "static", "alerts")
-        os.makedirs(static_dir, exist_ok=True)
-        audio_path = os.path.join(static_dir, f"{lake_id}.mp3")
+        import base64
+        import io
 
         api_key = os.getenv("ELEVENLABS_API_KEY")
         success = False
@@ -185,10 +184,9 @@ def nepali_tts_node(state: dict) -> dict:
                     timeout=10.0
                 )
                 r.raise_for_status()
-                with open(audio_path, "wb") as f:
-                    f.write(r.content)
-                state["audio_url"] = f"/static/alerts/{lake_id}.mp3"
-                state["agent_trace"].append({"agent": "Multilingual TTS", "status": f"ElevenLabs {lang_code} audio compiled."})
+                audio_b64 = base64.b64encode(r.content).decode("utf-8")
+                state["audio_url"] = f"data:audio/mp3;base64,{audio_b64}"
+                state["agent_trace"].append({"agent": "Multilingual TTS", "status": f"ElevenLabs {lang_code} audio compiled in-memory."})
                 success = True
             except Exception as e:
                 print(f"[Multilingual TTS] ElevenLabs API failed: {e}")
@@ -197,9 +195,13 @@ def nepali_tts_node(state: dict) -> dict:
             try:
                 from gtts import gTTS
                 # gtts supports 'ne' (Nepali), 'hi' (Hindi), 'en' (English)
-                gTTS(text=text, lang=lang_code if lang_code in ('ne', 'hi', 'en') else 'en').save(audio_path)
-                state["audio_url"] = f"/static/alerts/{lake_id}.mp3"
-                state["agent_trace"].append({"agent": "Multilingual TTS", "status": f"gTTS {lang_code} offline fallback compiled."})
+                fp = io.BytesIO()
+                tts = gTTS(text=text, lang=lang_code if lang_code in ('ne', 'hi', 'en') else 'en')
+                tts.write_to_fp(fp)
+                fp.seek(0)
+                audio_b64 = base64.b64encode(fp.read()).decode("utf-8")
+                state["audio_url"] = f"data:audio/mp3;base64,{audio_b64}"
+                state["agent_trace"].append({"agent": "Multilingual TTS", "status": f"gTTS {lang_code} offline fallback compiled in-memory."})
             except Exception as e:
                 print(f"[Multilingual TTS] gTTS fallback failed: {e}")
                 state["agent_trace"].append({"agent": "Multilingual TTS", "status": "TTS generation failed."})
