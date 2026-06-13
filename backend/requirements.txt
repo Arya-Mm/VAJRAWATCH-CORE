@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 fastapi
 uvicorn[standard]
 langgraph
@@ -25,3 +26,9 @@ xgboost
 scikit-learn
 shap
 joblib
+twilio
+chromadb
+torch
+sentence-transformers
+langfuse
+mlflow
