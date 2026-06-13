@@ -69,16 +69,18 @@ const MOCK_DATA = {
  * Normalizes backend response to match the exact schema expected by the frontend.
  */
 function normalizeResponse(data) {
+  // Backend now returns an object with { full_payload, summary }
+  const payload = data.full_payload ? data.full_payload : data;
   return {
-    ...data,
+    ...payload,
     // Map backend 'agent_trace' to frontend 'agent_traces'
-    agent_traces: data.agent_trace ? data.agent_trace.map((trace, i) => ({
+    agent_traces: payload.agent_trace ? payload.agent_trace.map((trace, i) => ({
       agent: trace.agent,
       step: i + 1,
       message: trace.status
-    })) : MOCK_DATA.agent_traces,
+    })) : [],
     // Provide absolute URL for audio if relative path is returned (keeping base64 data URIs as is)
-    audio_url: data.audio_url ? (data.audio_url.startsWith('data:') ? data.audio_url : `${API_BASE_URL}${data.audio_url}`) : null,
+    audio_url: payload.audio_url ? (payload.audio_url.startsWith('data:') ? payload.audio_url : `${API_BASE_URL}${payload.audio_url}`) : null,
     isMock: false
   };
 }
