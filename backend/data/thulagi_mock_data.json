@@ -1,0 +1,11 @@
+{
+  "lake_id": "PDGL_THULAGI_01",
+  "ndwi_delta": 0.15,
+  "sar_backscatter_change": -2.8,
+  "precip_7d_mm": 145.0,
+  "temp_anomaly_c": 2.4,
+  "seismic_count_14d": 3,
+  "seismic_max_magnitude": 4.1,
+  "nvidia_precip_5day_mm": 95.0,
+  "lake_area_km2": 0.86
+}

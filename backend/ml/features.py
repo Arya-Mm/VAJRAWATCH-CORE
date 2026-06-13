@@ -63,11 +63,11 @@ def calculate_risk(data: dict[str, Any]) -> dict[str, Any]:
 
     # Drivers list
     drivers = [
-        ("Lake Area Expansion", ndwi * 1.5, f"{ndwi*100:g}%"),
-        ("Ice/SAR Structural Change", max(0.0, -sar) * 0.25, f"{sar:g}dB"),
-        ("Rainfall (7d/Forecast)", precip_trigger, f"{max_precip:g}mm"),
-        ("Seismic Activity", seismic_trigger, f"{seismic_mag:g}M ({int(seismic_count)} events)"),
-        ("Temperature anomaly", temp_trigger, f"+{temp:g}°C"),
+        ("Lake Area Expansion", ndwi * 1.5, f"{ndwi*100:g}%", f"+{ndwi * 20:.1f}σ"),
+        ("Ice/SAR Structural Change", max(0.0, -sar) * 0.25, f"{sar:g}dB", f"+{abs(sar):.1f}σ"),
+        ("Rainfall (7d/Forecast)", precip_trigger, f"{max_precip:g}mm", f"+{(max_precip - 40) / 15:.1f}σ" if max_precip > 40 else "N/A"),
+        ("Seismic Activity", seismic_trigger, f"{seismic_mag:g}M ({int(seismic_count)} events)", f"+{seismic_mag - 2.0:.1f}σ" if seismic_mag > 2.0 else "N/A"),
+        ("Temperature anomaly", temp_trigger, f"+{temp:g}°C", f"+{temp * 1.5:.1f}σ"),
     ]
     
     top_drivers = sorted(drivers, key=lambda x: x[1], reverse=True)[:3]
@@ -105,7 +105,7 @@ def calculate_risk(data: dict[str, Any]) -> dict[str, Any]:
         "risk_tier": tier,
         "confidence": 0.94,
         "top_drivers": [
-            {"feature": name, "contribution": round(c, 2), "value": val} for name, c, val in top_drivers
+            {"feature": name, "contribution": round(c, 2), "value": val, "anomaly_ratio": ar} for name, c, val, ar in top_drivers
         ],
         "explanation": explanation
     }
