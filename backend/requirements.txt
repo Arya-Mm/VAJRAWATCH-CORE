@@ -32,3 +32,4 @@ torch
 sentence-transformers
 langfuse
 mlflow
+pandas

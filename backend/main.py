@@ -198,6 +198,8 @@ def health() -> dict[str, Any]:
     }
 
 
+from datetime import datetime
+
 @app.get("/risk/{lake_id}")
 def get_risk(lake_id: str) -> dict[str, Any]:
     mock_data_path = ROOT_DIR / "data" / "thulagi_mock_data.json"
@@ -219,44 +221,41 @@ def get_risk(lake_id: str) -> dict[str, Any]:
         "risk_result": {},
         "graph_context": "",
         "skeptic_verdict": "",
+        "evacuation_route": "",
+        "audio_url": "",
+        "alert_dispatched": False,
         "report": "",
         "agent_trace": [],
     }
 
     result = GRAPH.invoke(state)
-    risk = result["risk_result"]
-
-    # Generate report via NVIDIA NIM
-    top_driver = (
-        risk["top_drivers"][0]["feature"]
-        if risk.get("top_drivers") and len(risk["top_drivers"]) > 0
-        else "unknown"
-    )
-    report = generate_report_nvidia(
-        risk["risk_score"], risk["risk_tier"], top_driver, result["skeptic_verdict"]
-    )
-
-    # Generate TTS if RED alert
-    audio_url = None
-    if risk.get("risk_tier") == "RED":
-        audio_url = generate_nepali_tts_elevenlabs(lake_id, risk["risk_score"])
+    risk = result.get("risk_result", {})
 
     return {
         **risk,
         "lake_id": lake_id,
         "name": "Thulagi Lake",
-        "skeptic_verdict": result["skeptic_verdict"],
-        "report": report,
-        "agent_trace": result["agent_trace"],
-        "audio_url": audio_url,
+        "skeptic_verdict": result.get("skeptic_verdict", "MONITORING"),
+        "report": result.get("report", ""),
+        "agent_trace": result.get("agent_trace", []),
+        "audio_url": result.get("audio_url"),
         "weather_source": weather["source"],
+        "evacuation_route": result.get("evacuation_route"),
+        "alert_dispatched": result.get("alert_dispatched", False),
         "impact": {
             "population": 12480,
             "hydropower_mw": 186,
             "historical_analog": "South Lonak 2023",
-            "evacuation_route": "Besisahar → Khudi → Bhulebhule → Bharatpur (4.5h)",
         },
     }
+
+
+@app.post("/webhook/icimod")
+def receive_icimod_webhook(payload: dict[str, Any]) -> dict[str, Any]:
+    """Mock webhook to receive early warning alerts in ICIMOD-format protocol."""
+    print(f"[ICIMOD Webhook Received] GLOF warning event: {json.dumps(payload, indent=2)}")
+    return {"status": "received", "timestamp": datetime.utcnow().isoformat()}
+
 
 
 @app.post("/simulate/{lake_id}")
@@ -325,7 +324,7 @@ def explain(lake_id: str) -> dict[str, Any]:
         "population": 12480,
         "hydropower_mw": 186,
         "historical_analog": "South Lonak 2023",
-        "evacuation_route": "Besisahar → Khudi → Bhulebhule → Bharatpur (4.5h)",
+        "evacuation_route": "Besisahar -> Khudi -> Bhulebhule -> Bharatpur (4.5h)",
     }
     graph_paths = [
         {
