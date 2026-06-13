@@ -378,7 +378,8 @@ export default function Hero({ onEnterDashboard }: HeroProps) {
                 { stat: '1', unit: 'village destroyed', event: 'Thame, Khumbu', year: 'Aug 2024', sub: 'Entire community displaced', dominant: false },
               ].map(({ stat, unit, event, year, sub, dominant }) => (
                 <div key={event} style={{
-                  background: dominant ? 'rgba(239,68,68,0.04)' : BG,
+                  background: dominant ? 'rgba(239,68,68,0.1)' : 'rgba(5,5,5,0.4)',
+                  backdropFilter: 'blur(12px)',
                   padding: '3rem 2.5rem',
                   borderLeft: dominant ? '1px solid rgba(239,68,68,0.25)' : 'none',
                   borderRight: dominant ? '1px solid rgba(239,68,68,0.25)' : 'none',
@@ -462,7 +463,7 @@ export default function Hero({ onEnterDashboard }: HeroProps) {
                 { val: '$50–200M', label: 'prevented per plant', dominant: true },
                 { val: '36h', label: 'advance warning window', dominant: false },
               ].map(({ val, label, dominant }) => (
-                <div key={label} style={{ background: BG, padding: '2.5rem 2rem', textAlign: 'center' }}>
+                <div key={label} style={{ background: 'rgba(5,5,5,0.4)', backdropFilter: 'blur(12px)', padding: '2.5rem 2rem', textAlign: 'center' }}>
                   <div style={{ fontSize: dominant ? '3.5rem' : '2.5rem', fontWeight: 800, letterSpacing: '-0.04em', color: dominant ? TEXT_PRI : 'rgba(255,255,255,0.55)', lineHeight: 1, marginBottom: '0.5rem', fontFamily: 'Inter, sans-serif' }}>
                     {val}
                   </div>
