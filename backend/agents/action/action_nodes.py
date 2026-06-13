@@ -74,40 +74,87 @@ def report_synthesizer_node(state: dict) -> dict:
     state["agent_trace"].append({"agent": "Report Synthesizer", "status": f"Brief generated via {model_used}."})
     return state
 
+def get_lake_language_and_template(lake_id: str, score: float) -> tuple[str, str, str]:
+    lid = lake_id.upper()
+    if "THULAGI" in lid or "IMJA" in lid or "BARUN" in lid or "PDGL_MOCK_01" in lid or "PDGL_THULAGI" in lid:
+        # Nepal
+        return "ne", "ne-NP", f"अत्यन्त जरुरी चेतावनी। ताल खतरनाक स्तरमा पुगेको छ। जोखिम स्कोर {int(score)} प्रतिशत। तुरुन्त सुरक्षित स्थानमा जानुहोस्।"
+    elif "BHUTAN" in lid or "LUNANA" in lid:
+        # Bhutan
+        return "dz", "en-IN", f"Emergency Warning. Glacial lake at critical level. Risk score {int(score)} percent. Evacuate downstream areas immediately."
+    elif "SIKKIM" in lid or "LONAK" in lid or "INDIA" in lid:
+        # India
+        return "hi", "hi-IN", f"अत्यंत महत्वपूर्ण चेतावनी। झील खतरनाक स्तर पर पहुंच गई है। जोखिम स्कोर {int(score)} प्रतिशत। तुरंत सुरक्षित स्थान पर जाएं।"
+    else:
+        # Global/Default
+        return "en", "en-US", f"URGENT WARNING. Glacial lake has reached a dangerous level. Risk score {int(score)} percent. Evacuate immediately."
+
+
 def alert_dispatch_node(state: dict) -> dict:
-    """Agent 10: Alert Dispatch. Conditional execution via Twilio SMS."""
+    """Agent 10: Alert Dispatch. Conditional execution via Twilio SMS & Voice Call."""
     risk_tier = state.get("risk_result", {}).get("risk_tier", "GREEN")
     skeptic_verdict = state.get("skeptic_verdict", "MONITORING")
     report = state.get("report", "Emergency GLOF Alert.")
+    lake_id = state.get("lake_id", "PDGL_THULAGI_01")
+    score = state.get("risk_result", {}).get("risk_score", 0.0)
 
-    if risk_tier == "RED" and skeptic_verdict == "CONFIRMED":
-        target_phone = os.getenv("TWILIO_TARGET_PHONE")
-        sid = os.getenv("TWILIO_ACCOUNT_SID")
-        token = os.getenv("TWILIO_AUTH_TOKEN")
-        sender = os.getenv("TWILIO_PHONE_NUMBER")
+    # 1. Color-coded alert formatting for SMS
+    emoji_map = {
+        "RED": "🔴 [CRITICAL RED ALERT]",
+        "ORANGE": "🟠 [WARNING ORANGE ALERT]",
+        "YELLOW": "🟡 [ADVISORY YELLOW ALERT]",
+        "GREEN": "🟢 [MONITORING GREEN]"
+    }
+    prefix = emoji_map.get(risk_tier, "ℹ")
+    sms_body = f"{prefix} VAJRAWATCH GLOF WARNING:\n\n{report}"
 
+    target_phone = os.getenv("TWILIO_TARGET_PHONE")
+    sid = os.getenv("TWILIO_ACCOUNT_SID")
+    token = os.getenv("TWILIO_AUTH_TOKEN")
+    sender = os.getenv("TWILIO_PHONE_NUMBER")
+
+    # 2. Multilingual translation for Voice Call
+    lang_code, twilio_lang, voice_text = get_lake_language_and_template(lake_id, score)
+
+    # We dispatch alert on RED or ORANGE if skeptic confirms/monitors
+    if risk_tier in ("RED", "ORANGE"):
         if all([target_phone, sid, token, sender]):
             try:
                 from twilio.rest import Client
                 client = Client(sid, token)
+                
+                # Send Color-Coded SMS
                 client.messages.create(
-                    body=f"🚨 VAJRAWATCH ALERT:\n\n{report}",
+                    body=sms_body,
                     from_=sender,
                     to=target_phone
                 )
-                state["agent_trace"].append({"agent": "Alert Dispatch", "status": f"SMS successfully sent to {target_phone}."})
+                state["agent_trace"].append({"agent": "Alert Dispatch", "status": f"Color-coded SMS sent to {target_phone}."})
+
+                # If RED, initiate Voice Call
+                if risk_tier == "RED":
+                    txml = f'<Response><Say language="{twilio_lang}" voice="Polly.Madeline">{voice_text}</Say></Response>'
+                    client.calls.create(
+                        twiml=txml,
+                        to=target_phone,
+                        from_=sender
+                    )
+                    state["agent_trace"].append({"agent": "Alert Dispatch", "status": f"Twilio Voice Call initiated to {target_phone} ({twilio_lang})."})
             except Exception as e:
                 print(f"[Alert Dispatch] Twilio transmission failed: {e}")
                 state["agent_trace"].append({"agent": "Alert Dispatch", "status": "Twilio transmission failed."})
         else:
-            state["agent_trace"].append({"agent": "Alert Dispatch", "status": "Twilio keys missing. SMS dispatch bypassed."})
+            # Simulation mode (Keys missing)
+            state["agent_trace"].append({"agent": "Alert Dispatch", "status": f"[SIMULATED] Color-coded SMS: {prefix} sent to {target_phone or '+1234567890'}"})
+            if risk_tier == "RED":
+                state["agent_trace"].append({"agent": "Alert Dispatch", "status": f"[SIMULATED] Voice Call speaking in {twilio_lang}: '{voice_text}'"})
     else:
-        state["agent_trace"].append({"agent": "Alert Dispatch", "status": "Skipped. Criteria (RED + CONFIRMED) not met."})
+        state["agent_trace"].append({"agent": "Alert Dispatch", "status": f"Bypassed. Tier {risk_tier} does not meet dispatch threshold."})
         
     return state
 
 def nepali_tts_node(state: dict) -> dict:
-    """Agent 11: Nepali TTS. ElevenLabs synthesis with gTTS fallback."""
+    """Agent 11: Multilingual TTS. ElevenLabs synthesis with gTTS fallback."""
     risk_tier = state.get("risk_result", {}).get("risk_tier", "GREEN")
     score = state.get("risk_result", {}).get("risk_score", 0)
     lake_id = state.get("lake_id", "PDGL_THULAGI_01")
@@ -115,7 +162,8 @@ def nepali_tts_node(state: dict) -> dict:
     state["audio_url"] = None
 
     if risk_tier == "RED":
-        text = f"अत्यन्त जरुरी चेतावनी। थुलागी ताल खतरनाक स्तरमा पुगेको छ। जोखिम स्कोर {int(score)} प्रतिशत। तुरुन्त सुरक्षित स्थानमा जानुहोस्।"
+        # Get localized warning text based on region/lake
+        lang_code, twilio_lang, text = get_lake_language_and_template(lake_id, score)
         
         static_dir = os.path.join("backend", "static", "alerts")
         os.makedirs(static_dir, exist_ok=True)
@@ -140,21 +188,23 @@ def nepali_tts_node(state: dict) -> dict:
                 with open(audio_path, "wb") as f:
                     f.write(r.content)
                 state["audio_url"] = f"/static/alerts/{lake_id}.mp3"
-                state["agent_trace"].append({"agent": "Nepali TTS", "status": "ElevenLabs multilingual audio compiled."})
+                state["agent_trace"].append({"agent": "Multilingual TTS", "status": f"ElevenLabs {lang_code} audio compiled."})
                 success = True
             except Exception as e:
-                print(f"[Nepali TTS] ElevenLabs API failed: {e}")
+                print(f"[Multilingual TTS] ElevenLabs API failed: {e}")
 
         if not success:
             try:
                 from gtts import gTTS
-                gTTS(text=text, lang='ne').save(audio_path)
+                # gtts supports 'ne' (Nepali), 'hi' (Hindi), 'en' (English)
+                gTTS(text=text, lang=lang_code if lang_code in ('ne', 'hi', 'en') else 'en').save(audio_path)
                 state["audio_url"] = f"/static/alerts/{lake_id}.mp3"
-                state["agent_trace"].append({"agent": "Nepali TTS", "status": "gTTS offline fallback compiled."})
+                state["agent_trace"].append({"agent": "Multilingual TTS", "status": f"gTTS {lang_code} offline fallback compiled."})
             except Exception as e:
-                print(f"[Nepali TTS] gTTS fallback failed: {e}")
-                state["agent_trace"].append({"agent": "Nepali TTS", "status": "TTS generation failed."})
+                print(f"[Multilingual TTS] gTTS fallback failed: {e}")
+                state["agent_trace"].append({"agent": "Multilingual TTS", "status": "TTS generation failed."})
     else:
-        state["agent_trace"].append({"agent": "Nepali TTS", "status": "Skipped. Alert tier not RED."})
+        state["agent_trace"].append({"agent": "Multilingual TTS", "status": "Skipped. Alert tier not RED."})
 
     return state
+

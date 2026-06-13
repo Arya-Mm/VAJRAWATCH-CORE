@@ -16,14 +16,17 @@ class GraphService:
         if impact is None:
             impact = assessment.impact
 
-        driver_text = ", ".join(driver.feature for driver in assessment.top_drivers[:2])
+        from backend.ml.features import calculate_risk
+        risk_calc = calculate_risk(assessment.features.model_dump())
+        base_explanation = risk_calc.get("explanation", "")
+
         explanation = (
-            f"{assessment.name} is currently {assessment.risk_tier.value} at "
-            f"{assessment.risk_score}/100. The primary drivers are {driver_text}. "
-            f"The graph impact layer identifies {impact.population} people, "
+            f"{base_explanation} "
+            f"Furthermore, the downstream GraphRAG layer identifies {impact.population} people, "
             f"{impact.hydropower_mw:g} MW of hydropower exposure, and the closest "
             f"historical analog is {impact.historical_analog}."
         )
+
         return ExplainResponse(
             lake_id=assessment.lake_id,
             name=assessment.name,

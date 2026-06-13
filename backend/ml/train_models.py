@@ -9,56 +9,56 @@ import shap
 # Set random seed for reproducibility
 np.random.seed(42)
 
-def generate_synthetic_data(num_samples: int = 1000) -> pd.DataFrame:
-    """Generate realistic Himalayan GLOF risk indicators with balanced normal and hazard groups."""
-    n_normal = num_samples // 2
-    n_hazard = num_samples - n_normal
+def generate_synthetic_data(num_samples: int = 2000) -> pd.DataFrame:
+    """Generate realistic Himalayan GLOF risk indicators with physical interaction logic."""
+    # Generate random features across realistic ranges
+    ndwi_delta = np.random.uniform(0.0, 0.6, num_samples)
+    sar_backscatter_change = np.random.uniform(-4.0, 2.0, num_samples)
+    precip_7d_mm = np.random.uniform(0.0, 450.0, num_samples)
+    temp_anomaly_c = np.random.uniform(-2.0, 8.0, num_samples)
+    seismic_count_14d = np.random.poisson(lam=1.5, size=num_samples)
+    seismic_max_magnitude = np.random.uniform(0.0, 7.5, num_samples)
+    nvidia_precip_5day_mm = np.random.uniform(0.0, 250.0, num_samples)
+    lake_area_km2 = np.random.uniform(0.05, 3.5, num_samples)
 
-    # Normal samples: low NDWI, low precip, positive/low backscatter change, low seismic
-    ndwi_delta_normal = np.random.uniform(0.0, 0.08, n_normal)
-    sar_normal = np.random.uniform(-0.5, 2.0, n_normal)
-    precip_normal = np.random.uniform(0.0, 80.0, n_normal)
-    temp_normal = np.random.uniform(-2.0, 1.5, n_normal)
-    seismic_cnt_normal = np.random.poisson(lam=0.5, size=n_normal)
-    seismic_mag_normal = np.random.uniform(0.0, 2.5, n_normal)
-    nv_precip_normal = np.random.uniform(0.0, 50.0, n_normal)
-    lake_area_normal = np.random.uniform(0.05, 0.38, n_normal)
+    # 1. Structural Vulnerability (0.0 to 1.0+)
+    # Driven by lake expansion (ndwi_delta), SAR structural shifts (negative is dangerous), and lake size.
+    vuln_score = (ndwi_delta * 1.5) + (np.maximum(0.0, -sar_backscatter_change) * 0.25) + (np.maximum(0.0, lake_area_km2 - 0.4) * 0.15)
 
-    # Hazard samples: high NDWI, high precip, negative backscatter change, high seismic
-    ndwi_delta_hazard = np.random.uniform(0.1, 0.6, n_hazard)
-    sar_hazard = np.random.uniform(-4.0, -1.2, n_hazard)
-    precip_hazard = np.random.uniform(150.0, 450.0, n_hazard)
-    temp_hazard = np.random.uniform(2.0, 8.0, n_hazard)
-    seismic_cnt_hazard = np.random.poisson(lam=5.0, size=n_hazard)
-    seismic_mag_hazard = np.random.uniform(3.5, 7.5, n_hazard)
-    nv_precip_hazard = np.random.uniform(80.0, 250.0, n_hazard)
-    lake_area_hazard = np.random.uniform(0.4, 3.5, n_hazard)
+    # 2. Dynamic Triggers (0.0 to 1.0+)
+    # Driven by heavy rain (past 7 days or forecast 5 days), seismic activity, and temperature melt.
+    max_precip = np.maximum(precip_7d_mm, nvidia_precip_5day_mm)
+    precip_trigger = np.maximum(0.0, max_precip - 80.0) / 300.0  # significant above 80mm
+    
+    seismic_trigger = np.where(
+        (seismic_count_14d > 0) & (seismic_max_magnitude >= 3.5),
+        (seismic_max_magnitude - 3.5) * 0.2,
+        0.0
+    )
+    
+    temp_trigger = np.maximum(0.0, temp_anomaly_c) * 0.05
 
-    df_normal = pd.DataFrame({
-        "ndwi_delta": ndwi_delta_normal,
-        "sar_backscatter_change": sar_normal,
-        "precip_7d_mm": precip_normal,
-        "temp_anomaly_c": temp_normal,
-        "seismic_count_14d": seismic_cnt_normal,
-        "seismic_max_magnitude": seismic_mag_normal,
-        "nvidia_precip_5day_mm": nv_precip_normal,
-        "lake_area_km2": lake_area_normal,
-        "glof_occurred": 0
+    trigger_score = precip_trigger + seismic_trigger + temp_trigger
+
+    # 3. GLOF Occurrence Criteria (Interaction Model)
+    # A GLOF occurs if there is significant vulnerability AND a major trigger event,
+    # OR if the structural vulnerability is so catastrophic that it triggers a dam breach on its own.
+    prob = (vuln_score * 0.3) + (vuln_score * trigger_score * 0.7)
+    
+    glof_occurred = np.where((prob > 0.4) | (vuln_score > 1.3), 1, 0)
+
+    return pd.DataFrame({
+        "ndwi_delta": ndwi_delta,
+        "sar_backscatter_change": sar_backscatter_change,
+        "precip_7d_mm": precip_7d_mm,
+        "temp_anomaly_c": temp_anomaly_c,
+        "seismic_count_14d": seismic_count_14d,
+        "seismic_max_magnitude": seismic_max_magnitude,
+        "nvidia_precip_5day_mm": nvidia_precip_5day_mm,
+        "lake_area_km2": lake_area_km2,
+        "glof_occurred": glof_occurred
     })
 
-    df_hazard = pd.DataFrame({
-        "ndwi_delta": ndwi_delta_hazard,
-        "sar_backscatter_change": sar_hazard,
-        "precip_7d_mm": precip_hazard,
-        "temp_anomaly_c": temp_hazard,
-        "seismic_count_14d": seismic_cnt_hazard,
-        "seismic_max_magnitude": seismic_mag_hazard,
-        "nvidia_precip_5day_mm": nv_precip_hazard,
-        "lake_area_km2": lake_area_hazard,
-        "glof_occurred": 1
-    })
-
-    return pd.concat([df_normal, df_hazard], ignore_index=True)
 
 
 def train_and_export():

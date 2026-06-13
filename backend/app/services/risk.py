@@ -325,9 +325,34 @@ class RiskService:
 
 def calculate_numeric_risk(features: RiskFeatures) -> int:
     values = features.model_dump()
-    raw_score = sum(float(values[name]) * weight for name, weight in FEATURE_WEIGHTS.items())
-    risk_score = 100 / (1 + math.exp(-0.05 * (raw_score - 60)))
-    return max(0, min(100, round(risk_score)))
+    ndwi = float(values.get("ndwi_delta") or 0.0)
+    sar = float(values.get("sar_backscatter_change") or 0.0)
+    precip_7d = float(values.get("precip_7d_mm") or 0.0)
+    temp = float(values.get("temp_anomaly_c") or 0.0)
+    seismic_count = float(values.get("seismic_count_14d") or 0.0)
+    seismic_mag = float(values.get("seismic_max_magnitude") or 0.0)
+    nvidia_precip = float(values.get("nvidia_precip_5day_mm") or 0.0)
+    lake_area = float(values.get("lake_area_km2") or 0.0)
+
+    # 1. Structural Vulnerability
+    vuln_score = (ndwi * 1.5) + (max(0.0, -sar) * 0.25) + (max(0.0, lake_area - 0.4) * 0.15)
+    
+    # 2. Dynamic Triggers
+    max_precip = max(precip_7d, nvidia_precip)
+    precip_trigger = max(0.0, max_precip - 80.0) / 300.0
+    
+    seismic_trigger = 0.0
+    if seismic_count > 0 and seismic_mag >= 3.5:
+        seismic_trigger = (seismic_mag - 3.5) * 0.2
+        
+    temp_trigger = max(0.0, temp) * 0.05
+    trigger_score = precip_trigger + seismic_trigger + temp_trigger
+
+    # 3. GLOF probability and final risk score
+    prob = (vuln_score * 0.3) + (vuln_score * trigger_score * 0.7)
+    raw_score = prob * 150.0
+    score = 100.0 / (1.0 + math.exp(-0.06 * (raw_score - 40.0)))
+    return max(0, min(100, round(score)))
 
 
 def tier_for_score(score: int) -> RiskTier:
@@ -342,10 +367,35 @@ def tier_for_score(score: int) -> RiskTier:
 
 def top_drivers(features: RiskFeatures) -> list[TopDriver]:
     values = features.model_dump()
-    contributions: list[tuple[str, float, float]] = [
-        (name, abs(float(values[name])) * weight, float(values[name]))
-        for name, weight in FEATURE_WEIGHTS.items()
+    ndwi = float(values.get("ndwi_delta") or 0.0)
+    sar = float(values.get("sar_backscatter_change") or 0.0)
+    precip_7d = float(values.get("precip_7d_mm") or 0.0)
+    temp = float(values.get("temp_anomaly_c") or 0.0)
+    seismic_count = float(values.get("seismic_count_14d") or 0.0)
+    seismic_mag = float(values.get("seismic_max_magnitude") or 0.0)
+    nvidia_precip = float(values.get("nvidia_precip_5day_mm") or 0.0)
+    lake_area = float(values.get("lake_area_km2") or 0.0)
+
+    max_precip = max(precip_7d, nvidia_precip)
+    precip_trigger = max(0.0, max_precip - 80.0) / 300.0
+    
+    seismic_trigger = 0.0
+    if seismic_count > 0 and seismic_mag >= 3.5:
+        seismic_trigger = (seismic_mag - 3.5) * 0.2
+        
+    temp_trigger = max(0.0, temp) * 0.05
+
+    contributions = [
+        ("ndwi_delta", ndwi * 1.5, ndwi),
+        ("sar_backscatter_change", max(0.0, -sar) * 0.25, sar),
+        ("precip_7d_mm", precip_trigger, precip_7d),
+        ("temp_anomaly_c", temp_trigger, temp),
+        ("seismic_count_14d", seismic_trigger, seismic_count),
+        ("seismic_max_magnitude", seismic_trigger, seismic_mag),
+        ("nvidia_precip_5day_mm", precip_trigger, nvidia_precip),
+        ("lake_area_km2", max(0.0, lake_area - 0.4) * 0.15, lake_area),
     ]
+
     ordered = sorted(contributions, key=lambda item: item[1], reverse=True)[:3]
     drivers: list[TopDriver] = []
     for name, contribution, value in ordered:
@@ -360,6 +410,7 @@ def top_drivers(features: RiskFeatures) -> list[TopDriver]:
             )
         )
     return drivers
+
 
 
 def calculate_risk_from_mapping(features: dict[str, object]) -> dict[str, object]:
