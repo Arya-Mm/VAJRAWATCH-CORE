@@ -108,7 +108,7 @@ export async function fetchHealth() {
  */
 export async function runAnalysis(lakeId) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
   try {
     // 1. hit POST /simulate to flip state
     await fetch(`${API_BASE_URL}/simulate/${lakeId}?active=true`, { 
