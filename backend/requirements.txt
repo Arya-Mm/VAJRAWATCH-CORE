@@ -21,3 +21,7 @@ structlog
 prometheus-client
 arq
 google-antigravity
+xgboost
+scikit-learn
+shap
+joblib

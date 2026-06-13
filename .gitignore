@@ -19,4 +19,5 @@ logs/
 tmp/
 backend/static/alerts/*.mp3
 **/__pycache__/
+backend/ml/models/*.pkl
 
